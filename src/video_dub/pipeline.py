@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 
 from video_dub.config import AppConfig
-from video_dub.models.manifest import RunManifest
+from video_dub.models.manifest import DurationSummary, RunManifest
 from video_dub.models.transcript import TranscriptDocument
 from video_dub.providers.gemini_translate_provider import GeminiTranslateConfig, GeminiTranslateProvider
 from video_dub.providers.gemini_tts_provider import GeminiTTSConfig, GeminiTTSProvider
@@ -14,7 +14,7 @@ from video_dub.providers.whisperx_provider import WhisperXConfig, WhisperXProvid
 from video_dub.services.audio_compose import AudioComposeService
 from video_dub.services.audio_extract import AudioExtractor
 from video_dub.services.subtitle import write_srt
-from video_dub.services.synthesis import SynthesisService
+from video_dub.services.synthesis import SynthesisService, summarize_duration_statuses
 from video_dub.services.transcription import TranscriptionService
 from video_dub.services.translation import TranslationService
 from video_dub.services.video_mux import VideoMuxService
@@ -45,7 +45,7 @@ def initialize_run(config: AppConfig, input_video: Path, job_id: str | None = No
 
     manifest = RunManifest(
         job_id=resolved_job_id,
-        input_video=copied_input,
+        input_video=str(copied_input),
         source_language=config.source_language,
         target_language=config.target_language,
         subtitle_language=config.subtitle_language,
@@ -77,12 +77,12 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
             retry_delay_seconds=config.tts.retry_delay_seconds,
         )
     )
-    return SynthesisService(provider)
+    return SynthesisService(provider, config.tts_alignment)
 
 
 def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     extractor = AudioExtractor(context.config)
-    extractor.extract(context.manifest.input_video, context.layout.source_audio_path)
+    extractor.extract(Path(context.manifest.input_video), context.layout.source_audio_path)
     context.manifest.steps["extract_audio"] = "done"
     context.manifest.artifacts["source_audio"] = str(context.layout.source_audio_path)
     context.store.write_manifest(context.manifest)
@@ -129,20 +129,32 @@ def run_tts_compose_and_mux(context: PipelineContext, transcript_kk: TranscriptD
         tts_dir=context.layout.tts_dir,
         voice=context.config.tts.voice,
     )
-    context.store.write_transcript_kk_with_tts(transcript_with_tts)
+    duration_summary = summarize_duration_statuses(transcript_with_tts)
+    context.manifest.duration_summary = DurationSummary(**duration_summary)
+
+    compose_service = AudioComposeService(context.config.tts_alignment)
+    prepared_transcript = compose_service.prepare_transcript(transcript_with_tts)
+    context.store.write_transcript_kk_with_tts(prepared_transcript)
     context.manifest.steps["tts"] = "done"
     context.manifest.artifacts["tts_dir"] = str(context.layout.tts_dir)
     context.store.write_manifest(context.manifest)
+    print(
+        "TTS summary: "
+        f"total={duration_summary['total_segments']} "
+        f"preferred={duration_summary['preferred_count']} "
+        f"acceptable={duration_summary['acceptable_count']} "
+        f"flagged={duration_summary['flagged_count']} "
+        f"manual_review={duration_summary['manual_review_count']}"
+    )
 
-    compose_service = AudioComposeService()
-    compose_service.compose(transcript_with_tts, context.layout.dub_audio_path)
+    compose_service.compose(prepared_transcript, context.layout.dub_audio_path)
     context.manifest.steps["compose_audio"] = "done"
     context.manifest.artifacts["dub_audio"] = str(context.layout.dub_audio_path)
     context.store.write_manifest(context.manifest)
 
     mux_service = VideoMuxService()
     mux_service.mux_soft_subtitle(
-        input_video=context.manifest.input_video,
+        input_video=Path(context.manifest.input_video),
         dub_audio=context.layout.dub_audio_path,
         subtitle_srt=context.layout.subtitles_zh_path,
         output_video=context.layout.final_video_path,
@@ -150,4 +162,4 @@ def run_tts_compose_and_mux(context: PipelineContext, transcript_kk: TranscriptD
     context.manifest.steps["mux_video"] = "done"
     context.manifest.artifacts["final_video"] = str(context.layout.final_video_path)
     context.store.write_manifest(context.manifest)
-    return transcript_with_tts
+    return prepared_transcript

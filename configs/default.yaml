@@ -12,6 +12,15 @@ tts:
   sample_rate: 24000
   max_retries: 3
   retry_delay_seconds: 1.0
+tts_alignment:
+  enabled: true
+  preferred_ratio_tolerance: 0.08
+  max_ratio_tolerance: 0.15
+  short_ratio: 0.85
+  severe_long_ratio: 1.35
+  pad_with_silence: true
+  allow_minor_overhang_seconds: 0.15
+  manual_review_on_failure: true
 video:
   subtitle_mode: soft
 pipeline:

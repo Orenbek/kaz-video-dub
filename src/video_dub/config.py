@@ -20,6 +20,17 @@ class TTSConfig(BaseModel):
     retry_delay_seconds: float = 1.0
 
 
+class TTSAlignmentConfig(BaseModel):
+    enabled: bool = True
+    preferred_ratio_tolerance: float = 0.08
+    max_ratio_tolerance: float = 0.15
+    short_ratio: float = 0.85
+    severe_long_ratio: float = 1.35
+    pad_with_silence: bool = True
+    allow_minor_overhang_seconds: float = 0.15
+    manual_review_on_failure: bool = True
+
+
 class VideoConfig(BaseModel):
     subtitle_mode: str = "soft"
 
@@ -43,6 +54,7 @@ class AppConfig(BaseModel):
     subtitle_language: str = "zh"
     audio: AudioConfig = Field(default_factory=AudioConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
+    tts_alignment: TTSAlignmentConfig = Field(default_factory=TTSAlignmentConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
     translation: TranslationConfig = Field(default_factory=TranslationConfig)

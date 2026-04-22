@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
 
 
@@ -17,6 +18,16 @@ def extract_audio_command(input_video: Path, output_audio: Path, sample_rate: in
     )
 
 
+def build_compose_segment_filter(segment: Segment, index: int) -> str:
+    delay_ms = max(0, round(segment.start * 1000))
+    target_duration = segment.target_duration or 0.0
+    tts_duration = segment.tts_duration or 0.0
+    if target_duration > tts_duration:
+        pad_ms = round((target_duration - tts_duration) * 1000)
+        return f"[{index}:a]apad=pad_dur={pad_ms}ms,adelay={delay_ms}|{delay_ms}[a{index}]"
+    return f"[{index}:a]adelay={delay_ms}|{delay_ms}[a{index}]"
+
+
 def compose_dub_audio_command(transcript: TranscriptDocument, output_audio: Path) -> str:
     valid_segments = [segment for segment in transcript.segments if segment.tts_path]
     if not valid_segments:
@@ -26,8 +37,7 @@ def compose_dub_audio_command(transcript: TranscriptDocument, output_audio: Path
     filter_parts: list[str] = []
     mix_inputs: list[str] = []
     for index, segment in enumerate(valid_segments):
-        delay_ms = max(0, round(segment.start * 1000))
-        filter_parts.append(f"[{index}:a]adelay={delay_ms}|{delay_ms}[a{index}]")
+        filter_parts.append(build_compose_segment_filter(segment, index))
         mix_inputs.append(f"[a{index}]")
     filter_complex = ";".join(filter_parts) + f";{''.join(mix_inputs)}amix=inputs={len(valid_segments)}:normalize=0[out]"
     return (

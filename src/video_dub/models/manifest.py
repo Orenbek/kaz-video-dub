@@ -8,13 +8,22 @@ from pydantic import BaseModel, Field
 StepStatus = Literal["pending", "done", "skipped", "failed"]
 
 
+class DurationSummary(BaseModel):
+    total_segments: int = 0
+    preferred_count: int = 0
+    acceptable_count: int = 0
+    flagged_count: int = 0
+    manual_review_count: int = 0
+
+
 class RunManifest(BaseModel):
     job_id: str
-    input_video: Path
+    input_video: Path | str | None = None
     source_language: str = "en"
     target_language: str = "kk"
     subtitle_language: str = "zh"
     artifacts: dict[str, str] = Field(default_factory=dict)
+    duration_summary: DurationSummary = Field(default_factory=DurationSummary)
     steps: dict[str, StepStatus] = Field(
         default_factory=lambda: {
             "extract_audio": "pending",

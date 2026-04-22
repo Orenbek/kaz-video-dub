@@ -3,6 +3,7 @@ from pathlib import Path
 from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
 from video_dub.services.video_mux import VideoMuxService
+from video_dub.ffmpeg.commands import build_compose_segment_filter
 
 
 def test_video_mux_builds_soft_subtitle_command() -> None:
@@ -32,10 +33,38 @@ def test_transcript_can_store_tts_metadata() -> None:
                 text_en="Hello",
                 text_kk="Сәлем",
                 tts_path=Path("artifacts/tts/seg_0001.wav"),
+                target_duration=1.0,
+                initial_tts_duration=0.8,
                 tts_duration=0.8,
+                duration_status="acceptable",
+                duration_error_seconds=-0.2,
+                correction_actions=["pad_silence"],
             )
         ],
     )
 
-    assert transcript.segments[0].tts_path == Path("artifacts/tts/seg_0001.wav")
-    assert transcript.segments[0].tts_duration == 0.8
+    segment = transcript.segments[0]
+    assert segment.tts_path == Path("artifacts/tts/seg_0001.wav")
+    assert segment.target_duration == 1.0
+    assert segment.initial_tts_duration == 0.8
+    assert segment.tts_duration == 0.8
+    assert segment.duration_status == "acceptable"
+    assert segment.duration_error_seconds == -0.2
+    assert segment.correction_actions == ["pad_silence"]
+
+
+def test_compose_filter_pads_early_segment_with_silence() -> None:
+    segment = Segment(
+        id="seg_0001",
+        start=0.5,
+        end=1.5,
+        text_en="Hello",
+        tts_path=Path("artifacts/tts/seg_0001.wav"),
+        target_duration=1.0,
+        tts_duration=0.8,
+    )
+
+    filter_part = build_compose_segment_filter(segment, 0)
+
+    assert "apad=pad_dur=200ms" in filter_part
+    assert "adelay=500|500" in filter_part
