@@ -1,0 +1,13 @@
+run_root: runs
+source_language: en
+target_language: kk
+subtitle_language: zh
+audio:
+  sample_rate: 16000
+  channels: 1
+tts:
+  voice: kazakh-default
+video:
+  subtitle_mode: soft
+pipeline:
+  enable_diarization: false
