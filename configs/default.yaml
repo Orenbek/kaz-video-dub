@@ -6,8 +6,19 @@ audio:
   sample_rate: 16000
   channels: 1
 tts:
-  voice: kazakh-default
+  voice: Kore
+  model_name: gemini-3.1-flash-tts-preview
+  use_stub: true
+  sample_rate: 24000
+  max_retries: 3
+  retry_delay_seconds: 1.0
 video:
   subtitle_mode: soft
 pipeline:
   enable_diarization: false
+translation:
+  provider: gemini
+  use_stub: true
+  model_name: gemini-2.5-pro
+  max_retries: 3
+  retry_delay_seconds: 1.0

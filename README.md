@@ -14,19 +14,70 @@ A minimal English → Kazakh video dubbing pipeline focused on a stable first ru
 ## Environment
 This project uses Pixi on macOS Apple Silicon (`osx-arm64`).
 
-## Quick start
+## Setup
 ```bash
+cp .env.example .env
 pixi install
+```
+
+The CLI now auto-loads `.env` via `python-dotenv`.
+
+Set these before real provider runs:
+- `GEMINI_API_KEY` for Gemini translation and TTS
+- `HF_TOKEN` for WhisperX alignment / pyannote gated assets when needed
+
+## Quick start
+Stub mode is enabled by default for Gemini translation and TTS, so the pipeline structure can run before full API wiring.
+
+```bash
 pixi run run --input path/to/input.mp4
 ```
 
+## Real provider run
+1. Edit `configs/default.yaml`
+2. Set:
+   - `translation.use_stub: false`
+   - `tts.use_stub: false`
+3. Make sure `.env` contains `GEMINI_API_KEY`
+4. If WhisperX or pyannote gated models require it, set `HF_TOKEN`
+5. Tune retries if preview APIs are flaky:
+   - `translation.max_retries`
+   - `translation.retry_delay_seconds`
+   - `tts.max_retries`
+   - `tts.retry_delay_seconds`
+6. Run:
+
+```bash
+pixi run run --input path/to/input.mp4
+```
+
+## Real Gemini TTS notes
+The project is wired for the Gemini API Python SDK pattern documented for TTS:
+- model: `gemini-3.1-flash-tts-preview`
+- response modality: `AUDIO`
+- voice field: `speech_config.voice_config.prebuilt_voice_config.voice_name`
+- audio bytes path: `response.candidates[0].content.parts[0].inline_data.data`
+- saved as mono 24kHz 16-bit PCM WAV
+
+Default config is in `configs/default.yaml:1`.
+Default voice is `Kore`, based on the Google TTS example shape. You can change it in `configs/default.yaml:1`.
+
 ## Common commands
 ```bash
+pixi run run --input path/to/input.mp4
+pixi run transcribe --input path/to/input.mp4
+pixi run translate --run-dir runs/<job-id>
+pixi run tts --run-dir runs/<job-id>
+pixi run compose --run-dir runs/<job-id>
 pixi run test
 pixi run lint
 pixi run fmt
+pixi run typecheck
 ```
 
 ## Notes
 - The first version keeps all intermediate artifacts on disk under `runs/`.
 - The pipeline is organized around a unified segment data model.
+- Current Gemini TTS integration is single-speaker only.
+- Real Gemini TTS is preview-mode API surface, so response quirks and retries may still need hardening.
+- Run `pixi run test` after `pixi install`; the system Python in this repo is not the intended runtime.

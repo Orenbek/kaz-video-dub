@@ -23,4 +23,5 @@ def render_srt(transcript: TranscriptDocument) -> str:
 
 
 def write_srt(path: Path, transcript: TranscriptDocument) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_srt(transcript), encoding="utf-8")

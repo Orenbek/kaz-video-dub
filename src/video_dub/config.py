@@ -12,7 +12,12 @@ class AudioConfig(BaseModel):
 
 
 class TTSConfig(BaseModel):
-    voice: str = "kazakh-default"
+    voice: str = "Kore"
+    model_name: str = "gemini-3.1-flash-tts-preview"
+    use_stub: bool = True
+    sample_rate: int = 24000
+    max_retries: int = 3
+    retry_delay_seconds: float = 1.0
 
 
 class VideoConfig(BaseModel):
@@ -21,6 +26,14 @@ class VideoConfig(BaseModel):
 
 class PipelineConfig(BaseModel):
     enable_diarization: bool = False
+
+
+class TranslationConfig(BaseModel):
+    provider: str = "gemini"
+    use_stub: bool = True
+    model_name: str = "gemini-2.5-pro"
+    max_retries: int = 3
+    retry_delay_seconds: float = 1.0
 
 
 class AppConfig(BaseModel):
@@ -32,6 +45,7 @@ class AppConfig(BaseModel):
     tts: TTSConfig = Field(default_factory=TTSConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
+    translation: TranslationConfig = Field(default_factory=TranslationConfig)
 
 
 def load_config(path: Path) -> AppConfig:
