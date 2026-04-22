@@ -62,6 +62,11 @@ The project is wired for the Gemini API Python SDK pattern documented for TTS:
 Default config is in `configs/default.yaml:1`.
 Default voice is `Kore`, based on the Google TTS example shape. You can change it in `configs/default.yaml:1`.
 
+## Documentation
+- `docs/designs/` — near-term technical designs intended to guide implementation.
+- `docs/plans/` — implementation plans with phased engineering tasks and target files.
+- `docs/proposals/` — future-facing proposals that define direction without committing immediate engineering work.
+
 ## Common commands
 ```bash
 pixi run run --input path/to/input.mp4
