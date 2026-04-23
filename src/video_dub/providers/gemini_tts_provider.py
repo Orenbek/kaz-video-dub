@@ -5,6 +5,7 @@ import os
 import time
 import wave
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -75,7 +76,7 @@ class GeminiTTSProvider:
             f"Gemini TTS failed for segment {segment_id} after {self.config.max_retries} attempts: {last_error}"
         ) from last_error
 
-    def _extract_pcm_bytes(self, response: object) -> bytes:
+    def _extract_pcm_bytes(self, response: Any) -> bytes:
         try:
             parts = response.candidates[0].content.parts
         except (AttributeError, IndexError, TypeError) as exc:

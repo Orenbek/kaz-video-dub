@@ -1,0 +1,28 @@
+{
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "runs",
+    "log",
+    ".pixi"
+  ],
+  "venvPath": ".pixi/envs",
+  "venv": "default",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownLambdaType": "none",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "src"
+      ]
+    }
+  ]
+}

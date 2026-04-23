@@ -10,3 +10,4 @@ runs/
 .ruff_cache/
 .vscode/*.code-workspace
 .DS_Store
+/log

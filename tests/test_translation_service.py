@@ -2,7 +2,10 @@ from pathlib import Path
 
 from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.providers.gemini_translate_provider import GeminiTranslateConfig, GeminiTranslateProvider
+from video_dub.providers.gemini_translate_provider import (
+    GeminiTranslateConfig,
+    GeminiTranslateProvider,
+)
 from video_dub.services.translation import TranslationService
 
 

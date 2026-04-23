@@ -1,7 +1,10 @@
 from pathlib import Path
 
 from video_dub.models.segment import Segment
-from video_dub.providers.gemini_translate_provider import GeminiTranslateConfig, GeminiTranslateProvider
+from video_dub.providers.gemini_translate_provider import (
+    GeminiTranslateConfig,
+    GeminiTranslateProvider,
+)
 
 
 def test_stub_kazakh_translation_sets_text_kk() -> None:
@@ -36,7 +39,6 @@ def test_kazakh_prompt_includes_dubbing_length_guidance(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    provider = GeminiTranslateProvider(GeminiTranslateConfig(use_stub=False, prompt_dir=prompt_dir))
     prompt = prompt_path.read_text(encoding="utf-8")
 
     assert "roughly similar in length" in prompt

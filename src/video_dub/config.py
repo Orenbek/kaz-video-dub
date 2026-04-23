@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
 
@@ -24,10 +24,13 @@ class TTSAlignmentConfig(BaseModel):
     enabled: bool = True
     preferred_ratio_tolerance: float = 0.08
     max_ratio_tolerance: float = 0.15
-    short_ratio: float = 0.85
-    severe_long_ratio: float = 1.35
+    enable_time_stretch: bool = True
+    max_time_stretch_ratio: float = 0.08
+    min_time_stretch_improvement_seconds: float = 0.05
     pad_with_silence: bool = True
     allow_minor_overhang_seconds: float = 0.15
+    trim_trailing_silence: bool = True
+    max_trailing_silence_trim_seconds: float = 0.25
     manual_review_on_failure: bool = True
 
 

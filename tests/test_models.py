@@ -17,6 +17,7 @@ def test_segment_stores_duration_control_metadata() -> None:
         text_en="Hello",
         text_kk="Сәлем",
         tts_path=Path("artifacts/tts/seg_0001.wav"),
+        raw_tts_path=Path("artifacts/tts_raw/seg_0001.wav"),
         target_duration=1.0,
         initial_tts_duration=0.82,
         tts_duration=0.82,
@@ -24,9 +25,12 @@ def test_segment_stores_duration_control_metadata() -> None:
         duration_error_seconds=-0.18,
         correction_actions=["pad_silence"],
         time_stretch_ratio=None,
+        has_timeline_collision=False,
     )
 
-    transcript = TranscriptDocument(source_audio_path=Path("source.wav"), language="en", segments=[segment])
+    transcript = TranscriptDocument(
+        source_audio_path=Path("source.wav"), language="en", segments=[segment]
+    )
 
     stored = transcript.segments[0]
     assert stored.target_duration == 1.0
@@ -36,3 +40,5 @@ def test_segment_stores_duration_control_metadata() -> None:
     assert stored.duration_error_seconds == -0.18
     assert stored.correction_actions == ["pad_silence"]
     assert stored.time_stretch_ratio is None
+    assert stored.raw_tts_path == Path("artifacts/tts_raw/seg_0001.wav")
+    assert stored.has_timeline_collision is False

@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from video_dub.ffmpeg.commands import compose_dub_audio_command
 from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.ffmpeg.commands import compose_dub_audio_command
 
 
 def test_compose_dub_audio_command_contains_inputs_and_amix() -> None:

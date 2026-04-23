@@ -4,7 +4,7 @@ from pathlib import Path
 
 from video_dub.models.manifest import RunManifest
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.storage.json_store import write_model
+from video_dub.storage.json_store import write_json, write_model
 from video_dub.storage.run_layout import RunLayout
 
 
@@ -26,6 +26,9 @@ class ArtifactStore:
 
     def write_transcript_kk_with_tts(self, transcript: TranscriptDocument) -> None:
         write_model(self.layout.transcript_kk_path, transcript)
+
+    def write_manual_review_segments(self, rows: list[dict]) -> None:
+        write_json(self.layout.manual_review_segments_path, rows)
 
     def tts_path_for_segment(self, segment_id: str, suffix: str = ".wav") -> Path:
         return self.layout.tts_dir / f"{segment_id}{suffix}"

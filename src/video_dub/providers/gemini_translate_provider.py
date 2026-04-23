@@ -3,13 +3,22 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel
 
 from video_dub.models.segment import Segment
 
 TranslationMode = Literal["kk", "zh"]
+
+
+class GeminiContentGenerator(Protocol):
+    def generate_content(self, *, model: str, contents: str) -> Any: ...
+
+
+class GeminiClientLike(Protocol):
+    @property
+    def models(self) -> GeminiContentGenerator: ...
 
 
 class GeminiTranslateConfig(BaseModel):
@@ -72,7 +81,7 @@ class GeminiTranslateProvider:
 
     def _generate_text_with_retry(
         self,
-        client: object,
+        client: GeminiClientLike,
         model_name: str,
         prompt: str,
         segment_id: str,
@@ -98,7 +107,7 @@ class GeminiTranslateProvider:
             f"Gemini translation failed for segment {segment_id} ({mode}) after {self.config.max_retries} attempts: {last_error}"
         ) from last_error
 
-    def _extract_text_response(self, response: object) -> str:
+    def _extract_text_response(self, response: Any) -> str:
         text = getattr(response, "text", None)
         if isinstance(text, str) and text.strip():
             return text.strip()

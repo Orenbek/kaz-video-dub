@@ -1,33 +1,73 @@
+# Base run output directory. Each pipeline execution creates a timestamped job folder here.
 run_root: runs
+# Source transcript language.
 source_language: en
+# Target dubbing language.
 target_language: kk
+# Subtitle output language.
 subtitle_language: zh
+
 audio:
+  # Audio extracted from source video is normalized to this sample rate.
   sample_rate: 16000
+  # Audio extracted from source video is normalized to this channel count.
   channels: 1
+
 tts:
+  # Default voice name passed to the TTS provider.
   voice: Kore
+  # TTS model identifier.
   model_name: gemini-3.1-flash-tts-preview
+  # When true, synthesize deterministic local stub WAVs instead of calling the real provider.
   use_stub: true
+  # Output sample rate for synthesized TTS WAV files.
   sample_rate: 24000
+  # Retry count for transient TTS provider failures.
   max_retries: 3
+  # Delay between TTS retry attempts in seconds.
   retry_delay_seconds: 1.0
+
 tts_alignment:
+  # Master switch for segment-level duration measurement and alignment metadata.
   enabled: true
+  # Preferred duration window around target_duration. 0.08 means 92%~108% is considered preferred.
   preferred_ratio_tolerance: 0.08
+  # Acceptable duration window around target_duration. 0.15 means 85%~115% is still acceptable.
   max_ratio_tolerance: 0.15
-  short_ratio: 0.85
-  severe_long_ratio: 1.35
+  # Allow bounded acoustic time-stretch during TTS alignment when it clearly improves fit.
+  enable_time_stretch: true
+  # Maximum absolute time-stretch adjustment. 0.08 means at most +/-8% speed change.
+  max_time_stretch_ratio: 0.08
+  # Minimum absolute error reduction required before applying time-stretch in non-collision cases.
+  # Example: 0.05 means stretch is skipped unless it improves duration fit by at least 50ms.
+  min_time_stretch_improvement_seconds: 0.05
+  # If synthesized speech ends early, allow compose stage to pad trailing silence up to target duration.
   pad_with_silence: true
+  # Allow small timeline overhang past the next segment start before treating it as a collision.
   allow_minor_overhang_seconds: 0.15
+  # Allow compose stage to remove detected trailing silence to resolve small collisions.
+  trim_trailing_silence: true
+  # Upper bound on how much detected trailing silence may be removed from a segment.
+  max_trailing_silence_trim_seconds: 0.25
+  # If timing remains unsafe after allowed corrections, mark the segment for manual review instead of failing silently.
   manual_review_on_failure: true
+
 video:
+  # Subtitle mux mode for final video packaging.
   subtitle_mode: soft
+
 pipeline:
+  # Enable speaker diarization stage when provider support is available.
   enable_diarization: false
+
 translation:
+  # Translation backend identifier.
   provider: gemini
+  # When true, use deterministic stub translation output instead of calling the real provider.
   use_stub: true
+  # Translation model identifier.
   model_name: gemini-2.5-pro
+  # Retry count for transient translation provider failures.
   max_retries: 3
+  # Delay between translation retry attempts in seconds.
   retry_delay_seconds: 1.0

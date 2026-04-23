@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import srt
+import srt  # type: ignore[import-untyped]
 
 from video_dub.models.transcript import TranscriptDocument
 

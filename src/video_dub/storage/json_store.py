@@ -17,5 +17,5 @@ def read_model(path: Path, model_type: type[T]) -> T:
     return model_type.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def write_json(path: Path, data: dict) -> None:
+def write_json(path: Path, data: object) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")

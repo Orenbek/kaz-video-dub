@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
@@ -29,11 +30,13 @@ def build_compose_segment_filter(segment: Segment, index: int) -> str:
 
 
 def compose_dub_audio_command(transcript: TranscriptDocument, output_audio: Path) -> str:
-    valid_segments = [segment for segment in transcript.segments if segment.tts_path]
+    valid_segments = [segment for segment in transcript.segments if segment.tts_path is not None]
     if not valid_segments:
         raise ValueError("No TTS segment audio paths found for composition")
 
-    input_args = " ".join(f"-i {quote(segment.tts_path)}" for segment in valid_segments)
+    input_args = " ".join(
+        f"-i {quote(cast(Path, segment.tts_path))}" for segment in valid_segments
+    )
     filter_parts: list[str] = []
     mix_inputs: list[str] = []
     for index, segment in enumerate(valid_segments):

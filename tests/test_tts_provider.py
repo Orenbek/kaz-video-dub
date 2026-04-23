@@ -1,5 +1,5 @@
-from pathlib import Path
 import wave
+from pathlib import Path
 
 from video_dub.models.segment import Segment
 from video_dub.providers.gemini_tts_provider import GeminiTTSConfig, GeminiTTSProvider

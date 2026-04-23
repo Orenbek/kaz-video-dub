@@ -22,7 +22,7 @@ class WhisperXProvider:
         self.config = config or WhisperXConfig()
 
     def transcribe_and_align(self, audio_path: Path) -> TranscriptDocument:
-        import whisperx
+        import whisperx  # type: ignore[import-untyped]
 
         model = whisperx.load_model(
             self.config.model_name,

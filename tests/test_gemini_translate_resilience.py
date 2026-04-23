@@ -1,6 +1,9 @@
 from types import SimpleNamespace
 
-from video_dub.providers.gemini_translate_provider import GeminiTranslateConfig, GeminiTranslateProvider
+from video_dub.providers.gemini_translate_provider import (
+    GeminiTranslateConfig,
+    GeminiTranslateProvider,
+)
 
 
 def test_extract_text_response_prefers_response_text() -> None:

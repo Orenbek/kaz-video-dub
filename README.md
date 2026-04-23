@@ -74,6 +74,8 @@ pixi run transcribe --input path/to/input.mp4
 pixi run translate --run-dir runs/<job-id>
 pixi run tts --run-dir runs/<job-id>
 pixi run compose --run-dir runs/<job-id>
+pixi run repair-show --run-dir runs/<job-id>
+pixi run repair-export --run-dir runs/<job-id>
 pixi run test
 pixi run lint
 pixi run fmt

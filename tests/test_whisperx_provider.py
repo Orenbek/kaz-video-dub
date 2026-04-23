@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from video_dub.providers.whisperx_provider import WhisperXProvider
 
 

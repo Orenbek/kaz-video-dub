@@ -15,6 +15,7 @@ class Segment(BaseModel):
     text_kk: Optional[str] = None
     subtitle_zh: Optional[str] = None
     tts_path: Optional[Path] = None
+    raw_tts_path: Optional[Path] = None
     tts_duration: Optional[float] = None
     target_duration: Optional[float] = None
     initial_tts_duration: Optional[float] = None
@@ -22,6 +23,7 @@ class Segment(BaseModel):
     duration_error_seconds: Optional[float] = None
     correction_actions: list[str] = Field(default_factory=list)
     time_stretch_ratio: Optional[float] = None
+    has_timeline_collision: Optional[bool] = None
 
     @property
     def duration(self) -> float:
