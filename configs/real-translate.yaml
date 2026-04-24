@@ -1,0 +1,13 @@
+# Real translation provider config. TTS remains on its default stub setting unless
+# a TTS-specific config overrides it.
+run_root: runs
+source_language: en
+target_language: kk
+subtitle_language: zh
+
+translation:
+  provider: gemini
+  use_stub: false
+  model_name: gemini-flash-latest
+  max_retries: 3
+  retry_delay_seconds: 1.0

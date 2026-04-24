@@ -3,7 +3,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from video_dub.cli import app
+from video_dub.cli import app, load_existing_context
 from video_dub.config import AppConfig
 from video_dub.models.manifest import RunManifest
 from video_dub.models.segment import Segment
@@ -54,6 +54,30 @@ def test_initialize_run_copies_optional_input_audio_and_writes_manifest(
     assert copied_audio.exists()
     assert copied_audio.read_bytes() == b"fake-audio"
     assert select_transcription_audio_source(context.manifest) == copied_audio
+
+
+def test_load_existing_context_preserves_manifest_without_reinitializing(
+    tmp_path: Path,
+) -> None:
+    input_video = tmp_path / "input.mp4"
+    input_audio = tmp_path / "audio.m4a"
+    input_video.write_bytes(b"fake-video")
+    input_audio.write_bytes(b"fake-audio")
+    config = AppConfig(run_root=tmp_path / "runs")
+    context = initialize_run(config, input_video, job_id="job-existing", input_audio=input_audio)
+    context.manifest.steps["extract_audio"] = "done"
+    context.manifest.steps["transcribe"] = "done"
+    context.manifest.artifacts["transcript_en"] = str(context.layout.transcript_en_path)
+    context.store.write_manifest(context.manifest)
+
+    loaded = load_existing_context(context.layout.run_dir, Path("configs/default.yaml"))
+    persisted = json.loads(context.layout.manifest_path.read_text(encoding="utf-8"))
+
+    assert loaded.layout.run_dir == context.layout.run_dir
+    assert loaded.manifest.steps["extract_audio"] == "done"
+    assert loaded.manifest.steps["transcribe"] == "done"
+    assert persisted["steps"]["extract_audio"] == "done"
+    assert persisted["steps"]["transcribe"] == "done"
 
 
 def test_run_extract_and_transcribe_uses_manifest_input_audio(
@@ -205,7 +229,9 @@ def test_run_tts_compose_and_mux_writes_overhang_for_unresolved_collision_with_n
     input_video = tmp_path / "input.mp4"
     input_video.write_bytes(b"fake-video")
     config = AppConfig(run_root=tmp_path / "runs")
-    config.tts_alignment = config.tts_alignment.model_copy(update={"allow_minor_overhang_seconds": 0.1})
+    config.tts_alignment = config.tts_alignment.model_copy(
+        update={"allow_minor_overhang_seconds": 0.1}
+    )
     context = initialize_run(config, input_video, job_id="job-overhang")
 
     transcript = TranscriptDocument(

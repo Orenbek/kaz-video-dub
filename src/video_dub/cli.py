@@ -11,9 +11,9 @@ from video_dub.config import load_config
 from video_dub.models.manifest import RunManifest
 from video_dub.models.transcript import TranscriptDocument
 from video_dub.pipeline import (
+    PipelineContext,
     build_manual_review_segment_row,
     initialize_run,
-    require_manifest_input_video,
     run_extract_and_transcribe,
     run_translate_and_subtitle,
     run_tts_compose_and_mux,
@@ -63,15 +63,7 @@ def load_existing_context(run_dir: Path, config_path: Path):
     layout = RunLayout(run_dir)
     store = ArtifactStore(layout)
     manifest = read_model(layout.manifest_path, RunManifest)
-    context = initialize_run(
-        app_config,
-        require_manifest_input_video(manifest.input_video),
-        job_id=manifest.job_id,
-        input_audio=Path(manifest.input_audio) if manifest.input_audio is not None else None,
-    )
-    context.manifest = manifest
-    context.store = store
-    return context
+    return PipelineContext(config=app_config, layout=layout, store=store, manifest=manifest)
 
 
 @app.command()

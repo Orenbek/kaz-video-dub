@@ -24,6 +24,11 @@ class VideoMuxService:
         output_video: Path,
     ) -> Path:
         output_video.parent.mkdir(parents=True, exist_ok=True)
-        command = self.build_soft_subtitle_command(input_video, dub_audio, subtitle_srt, output_video)
+        command = self.build_soft_subtitle_command(
+            input_video,
+            dub_audio,
+            subtitle_srt,
+            output_video,
+        )
         subprocess.run(command, shell=True, check=True)
         return output_video

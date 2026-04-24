@@ -53,9 +53,7 @@ def build_manual_review_segment_row(segment: Any) -> dict[str, Any]:
             alignment,
         )
         if max_safe_duration is not None:
-            timeline_overhang_seconds = round(
-                max(0.0, segment.tts_duration - max_safe_duration), 6
-            )
+            timeline_overhang_seconds = round(max(0.0, segment.tts_duration - max_safe_duration), 6)
 
     if segment.has_timeline_collision:
         manual_review_reason = "timeline_collision_unresolved"
@@ -126,10 +124,7 @@ def initialize_run(
     copied_audio = None
     if input_audio is not None:
         audio_name = input_audio.name
-        if (
-            input_audio.resolve() != input_video.resolve()
-            and audio_name == copied_video.name
-        ):
+        if input_audio.resolve() != input_video.resolve() and audio_name == copied_video.name:
             audio_name = f"audio_{audio_name}"
         copied_audio = copy_input_file(input_audio, layout.input_dir, audio_name)
 
@@ -173,14 +168,18 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
 
 def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     extractor = AudioExtractor(context.config)
+    audio_source = select_transcription_audio_source(context.manifest)
+    print(f"[pipeline] Extracting transcription audio from {audio_source}")
     extractor.extract(
-        select_transcription_audio_source(context.manifest),
+        audio_source,
         context.layout.source_audio_path,
     )
+    print(f"[pipeline] Wrote normalized source audio to {context.layout.source_audio_path}")
     context.manifest.steps["extract_audio"] = "done"
     context.manifest.artifacts["source_audio"] = str(context.layout.source_audio_path)
     context.store.write_manifest(context.manifest)
 
+    print("[pipeline] Starting transcription and alignment")
     provider = WhisperXProvider(
         WhisperXConfig(
             language=context.config.source_language,
@@ -188,6 +187,7 @@ def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     )
     service = TranscriptionService(provider)
     transcript = service.run(context.layout.source_audio_path)
+    print(f"[pipeline] Transcription finished: segments={len(transcript.segments)}")
     context.store.write_transcript_en(transcript)
     context.manifest.steps["transcribe"] = "done"
     context.manifest.steps["align"] = "done"
@@ -202,14 +202,24 @@ def run_translate_and_subtitle(
 ) -> tuple[TranscriptDocument, TranscriptDocument]:
     service = build_translation_service(context.config)
 
+    print(
+        f"[pipeline] Translating transcript to {context.config.target_language}: "
+        f"segments={len(transcript.segments)}"
+    )
     transcript_kk = service.to_kazakh(transcript)
     context.store.write_transcript_kk(transcript_kk)
+    print(f"[pipeline] Wrote target transcript to {context.layout.transcript_kk_path}")
     context.manifest.steps["translate"] = "done"
     context.manifest.artifacts["transcript_kk"] = str(context.layout.transcript_kk_path)
     context.store.write_manifest(context.manifest)
 
+    print(
+        f"[pipeline] Translating subtitles to {context.config.subtitle_language}: "
+        f"segments={len(transcript.segments)}"
+    )
     transcript_zh = service.to_chinese_subtitles(transcript)
     write_srt(context.layout.subtitles_zh_path, transcript_zh)
+    print(f"[pipeline] Wrote subtitle file to {context.layout.subtitles_zh_path}")
     context.manifest.steps["subtitle"] = "done"
     context.manifest.artifacts["subtitles_zh"] = str(context.layout.subtitles_zh_path)
     context.store.write_manifest(context.manifest)
@@ -220,6 +230,10 @@ def run_tts_compose_and_mux(
     context: PipelineContext, transcript_kk: TranscriptDocument
 ) -> TranscriptDocument:
     tts_service = build_tts_service(context.config)
+    print(
+        f"[pipeline] Starting TTS synthesis: segments={len(transcript_kk.segments)} "
+        f"voice={context.config.tts.voice}"
+    )
     transcript_with_tts = tts_service.run(
         transcript_kk,
         tts_dir=context.layout.tts_dir,
@@ -227,6 +241,7 @@ def run_tts_compose_and_mux(
         voice=context.config.tts.voice,
     )
 
+    print("[pipeline] Preparing synthesized segments for timeline composition")
     compose_service = AudioComposeService(context.config.tts_alignment)
     prepared_transcript = compose_service.prepare_transcript(transcript_with_tts)
     duration_summary = summarize_duration_statuses(prepared_transcript)
@@ -255,7 +270,7 @@ def run_tts_compose_and_mux(
     )
     context.store.write_manifest(context.manifest)
     print(
-        "TTS summary: "
+        "[pipeline] TTS summary: "
         f"total={duration_summary['total_segments']} "
         f"preferred={duration_summary['preferred_count']} "
         f"acceptable={duration_summary['acceptable_count']} "
@@ -266,18 +281,22 @@ def run_tts_compose_and_mux(
         f"time_stretch={duration_summary['time_stretch_applied_count']}"
     )
 
+    print(f"[pipeline] Composing dub audio to {context.layout.dub_audio_path}")
     compose_service.compose(prepared_transcript, context.layout.dub_audio_path)
+    print(f"[pipeline] Wrote dub audio to {context.layout.dub_audio_path}")
     context.manifest.steps["compose_audio"] = "done"
     context.manifest.artifacts["dub_audio"] = str(context.layout.dub_audio_path)
     context.store.write_manifest(context.manifest)
 
     mux_service = VideoMuxService()
+    print(f"[pipeline] Muxing final video to {context.layout.final_video_path}")
     mux_service.mux_soft_subtitle(
         input_video=require_manifest_input_video(context.manifest.input_video),
         dub_audio=context.layout.dub_audio_path,
         subtitle_srt=context.layout.subtitles_zh_path,
         output_video=context.layout.final_video_path,
     )
+    print(f"[pipeline] Wrote final video to {context.layout.final_video_path}")
     context.manifest.steps["mux_video"] = "done"
     context.manifest.artifacts["final_video"] = str(context.layout.final_video_path)
     context.store.write_manifest(context.manifest)

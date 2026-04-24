@@ -66,7 +66,7 @@ translation:
   # When true, use deterministic stub translation output instead of calling the real provider.
   use_stub: true
   # Translation model identifier.
-  model_name: gemini-2.5-pro
+  model_name: gemini-flash-latest
   # Retry count for transient translation provider failures.
   max_retries: 3
   # Delay between translation retry attempts in seconds.

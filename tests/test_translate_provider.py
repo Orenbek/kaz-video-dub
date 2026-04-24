@@ -7,6 +7,10 @@ from video_dub.providers.gemini_translate_provider import (
 )
 
 
+def test_default_translation_model_uses_gemini_flash_latest() -> None:
+    assert GeminiTranslateConfig().model_name == "gemini-flash-latest"
+
+
 def test_stub_kazakh_translation_sets_text_kk() -> None:
     provider = GeminiTranslateProvider(GeminiTranslateConfig(use_stub=True))
     segments = [Segment(id="seg_0001", start=0.0, end=1.0, text_en="Hello there")]

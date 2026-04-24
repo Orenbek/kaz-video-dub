@@ -22,7 +22,7 @@ class GeminiClientLike(Protocol):
 
 
 class GeminiTranslateConfig(BaseModel):
-    model_name: str = "gemini-2.5-pro"
+    model_name: str = "gemini-flash-latest"
     api_key_env: str = "GEMINI_API_KEY"
     use_stub: bool = True
     prompt_dir: Path = Path("configs/prompts")
@@ -36,15 +36,29 @@ class GeminiTranslateProvider:
 
     def translate_to_kazakh(self, segments: list[Segment]) -> list[Segment]:
         if self.config.use_stub:
-            return [segment.model_copy(update={"text_kk": self._stub_translate(segment.text_en, "kk")}) for segment in segments]
+            print(f"[translate] Using stub Kazakh translation for {len(segments)} segments")
+            return [
+                segment.model_copy(update={"text_kk": self._stub_translate(segment.text_en, "kk")})
+                for segment in segments
+            ]
         return self._translate_with_gemini(segments, mode="kk")
 
     def translate_to_chinese_subtitles(self, segments: list[Segment]) -> list[Segment]:
         if self.config.use_stub:
-            return [segment.model_copy(update={"subtitle_zh": self._stub_translate(segment.text_en, "zh")}) for segment in segments]
+            print(
+                f"[translate] Using stub Chinese subtitle translation for {len(segments)} segments"
+            )
+            return [
+                segment.model_copy(
+                    update={"subtitle_zh": self._stub_translate(segment.text_en, "zh")}
+                )
+                for segment in segments
+            ]
         return self._translate_with_gemini(segments, mode="zh")
 
-    def _translate_with_gemini(self, segments: list[Segment], mode: TranslationMode) -> list[Segment]:
+    def _translate_with_gemini(
+        self, segments: list[Segment], mode: TranslationMode
+    ) -> list[Segment]:
         api_key = os.getenv(self.config.api_key_env)
         if not api_key:
             raise RuntimeError(f"Missing {self.config.api_key_env} for Gemini translation")
@@ -54,12 +68,19 @@ class GeminiTranslateProvider:
         except ImportError as exc:
             raise RuntimeError("google-genai is not installed") from exc
 
-        prompt_name = "translate_en_to_kk.txt" if mode == "kk" else "translate_en_to_zh_subtitle.txt"
+        prompt_name = (
+            "translate_en_to_kk.txt" if mode == "kk" else "translate_en_to_zh_subtitle.txt"
+        )
         system_prompt = (self.config.prompt_dir / prompt_name).read_text(encoding="utf-8")
         client = genai.Client(api_key=api_key)
 
+        print(
+            f"[translate] Starting Gemini {mode} translation: "
+            f"model={self.config.model_name} segments={len(segments)}"
+        )
         translated_segments: list[Segment] = []
-        for segment in segments:
+        for index, segment in enumerate(segments, start=1):
+            print(f"[translate] {mode} {index}/{len(segments)} {segment.id}")
             prompt = (
                 f"{system_prompt}\n\n"
                 f"Return only the translated text for this segment.\n"
@@ -77,6 +98,9 @@ class GeminiTranslateProvider:
                 translated_segments.append(segment.model_copy(update={"text_kk": text}))
             else:
                 translated_segments.append(segment.model_copy(update={"subtitle_zh": text}))
+        print(
+            f"[translate] Finished Gemini {mode} translation: translated={len(translated_segments)}"
+        )
         return translated_segments
 
     def _generate_text_with_retry(
@@ -102,9 +126,15 @@ class GeminiTranslateProvider:
                 last_error = exc
                 if attempt == self.config.max_retries:
                     break
+                print(
+                    f"[translate] Gemini {mode} retry {attempt + 1}/{self.config.max_retries} "
+                    f"for {segment_id} after error: {exc}"
+                )
                 time.sleep(self.config.retry_delay_seconds)
         raise RuntimeError(
-            f"Gemini translation failed for segment {segment_id} ({mode}) after {self.config.max_retries} attempts: {last_error}"
+            "Gemini translation failed for "
+            f"segment {segment_id} ({mode}) after "
+            f"{self.config.max_retries} attempts: {last_error}"
         ) from last_error
 
     def _extract_text_response(self, response: Any) -> str:
@@ -114,7 +144,11 @@ class GeminiTranslateProvider:
         try:
             candidates = response.candidates
             parts = candidates[0].content.parts
-            collected = [part.text.strip() for part in parts if getattr(part, "text", None) and part.text.strip()]
+            collected = [
+                part.text.strip()
+                for part in parts
+                if getattr(part, "text", None) and part.text.strip()
+            ]
         except (AttributeError, IndexError, TypeError) as exc:
             raise RuntimeError("Gemini translation response did not contain readable text") from exc
         return "\n".join(collected).strip()

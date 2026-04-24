@@ -50,7 +50,9 @@ def apply_segment_repairs(
 
         repaired_text = repair_row.get("text_kk")
         if not isinstance(repaired_text, str) or not repaired_text.strip():
-            raise RuntimeError(f"Repair row for segment {segment.id} must provide non-empty text_kk")
+            raise RuntimeError(
+                f"Repair row for segment {segment.id} must provide non-empty text_kk"
+            )
 
         repaired_segment = segment.model_copy(
             update={
@@ -62,7 +64,9 @@ def apply_segment_repairs(
                 "has_timeline_collision": None,
             }
         )
-        next_segment = transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
+        next_segment = (
+            transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
+        )
         synthesized = tts_service.process_segment(
             segment=repaired_segment,
             next_segment=next_segment,

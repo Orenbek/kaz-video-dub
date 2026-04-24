@@ -45,7 +45,9 @@ class AudioComposeService:
 
         prepared_segments = []
         for index, segment in enumerate(transcript.segments):
-            next_segment = transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
+            next_segment = (
+                transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
+            )
             prepared_segments.append(self.prepare_segment(segment, next_segment))
         return transcript.model_copy(update={"segments": prepared_segments})
 
@@ -56,12 +58,15 @@ class AudioComposeService:
         correction_actions = list(segment.correction_actions)
         actual_duration = segment.tts_duration
         target_duration = segment.target_duration or segment.duration
-        allowed_end = None if next_segment is None else next_segment.start + self.alignment.allow_minor_overhang_seconds
 
-        if actual_duration < target_duration and self.alignment.pad_with_silence and "pad_silence" not in correction_actions:
+        if (
+            actual_duration < target_duration
+            and self.alignment.pad_with_silence
+            and "pad_silence" not in correction_actions
+        ):
             correction_actions.append("pad_silence")
 
-        if allowed_end is not None:
+        if next_segment is not None:
             max_safe_duration = compute_max_safe_duration(segment, next_segment, self.alignment)
             assert max_safe_duration is not None
             if actual_duration > max_safe_duration:
@@ -77,12 +82,17 @@ class AudioComposeService:
                         correction_actions.append("trim_trailing_silence")
                     segment = segment.model_copy(update={"tts_path": trimmed_path})
                 if actual_duration > max_safe_duration:
-                    unresolved_status = "manual_review" if self.alignment.manual_review_on_failure else (segment.duration_status or "too_long")
+                    if self.alignment.manual_review_on_failure:
+                        unresolved_status = "manual_review"
+                    else:
+                        unresolved_status = segment.duration_status or "too_long"
                     return segment.model_copy(
                         update={
                             "tts_duration": actual_duration,
                             "duration_status": unresolved_status,
-                            "duration_error_seconds": compute_duration_error(target_duration, actual_duration),
+                            "duration_error_seconds": compute_duration_error(
+                                target_duration, actual_duration
+                            ),
                             "correction_actions": correction_actions,
                             "has_timeline_collision": True,
                         }
@@ -134,11 +144,15 @@ class AudioComposeService:
         trimmed_duration = self._write_trimmed_wav(path, output_path, trim_seconds)
         return TrimResult(applied=True, output_path=output_path, duration=trimmed_duration)
 
-    def _detect_trailing_silence(self, path: Path, silence_threshold: int = 200, chunk_ms: int = 20) -> float:
+    def _detect_trailing_silence(
+        self,
+        path: Path,
+        silence_threshold: int = 200,
+        chunk_ms: int = 20,
+    ) -> float:
         with wave.open(str(path), "rb") as wav_file:
             sample_rate = wav_file.getframerate()
             sample_width = wav_file.getsampwidth()
-            channels = wav_file.getnchannels()
             frame_count = wav_file.getnframes()
             chunk_frames = max(1, int(sample_rate * chunk_ms / 1000))
             total_silent_frames = 0
@@ -166,7 +180,11 @@ class AudioComposeService:
 
         total = 0.0
         for offset in range(0, len(chunk), sample_width):
-            sample = int.from_bytes(chunk[offset : offset + sample_width], byteorder="little", signed=True)
+            sample = int.from_bytes(
+                chunk[offset : offset + sample_width],
+                byteorder="little",
+                signed=True,
+            )
             total += sample * sample
         return (total / sample_count) ** 0.5
 

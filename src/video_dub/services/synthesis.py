@@ -9,7 +9,6 @@ from video_dub.config import TTSAlignmentConfig
 from video_dub.ffmpeg.probe import probe_duration
 from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.providers.gemini_tts_provider import GeminiTTSProvider
 
 MANUAL_REVIEW_PLACEHOLDER = "manual_review_placeholder"
 
@@ -24,6 +23,12 @@ def measure_wav_duration(path: Path) -> float:
 
 def compute_target_duration(segment: Segment) -> float:
     return max(0.0, segment.end - segment.start)
+
+
+def format_optional_seconds(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.3f}s"
 
 
 def compute_duration_ratio(target_duration: float, actual_duration: float) -> float | None:
@@ -86,7 +91,9 @@ def classify_duration_only(
     return "manual_review"
 
 
-def compute_required_time_stretch_ratio(target_duration: float, actual_duration: float) -> float | None:
+def compute_required_time_stretch_ratio(
+    target_duration: float, actual_duration: float
+) -> float | None:
     if target_duration <= 0 or actual_duration <= 0:
         return None
     return target_duration / actual_duration
@@ -173,7 +180,9 @@ def summarize_duration_statuses(transcript: TranscriptDocument) -> dict[str, int
             measured_segments += 1
 
         summary["time_stretch_applied_count"] += int("time_stretch" in segment.correction_actions)
-        summary["trim_trailing_silence_applied_count"] += int("trim_trailing_silence" in segment.correction_actions)
+        summary["trim_trailing_silence_applied_count"] += int(
+            "trim_trailing_silence" in segment.correction_actions
+        )
         summary["pad_silence_applied_count"] += int("pad_silence" in segment.correction_actions)
 
     if measured_segments:
@@ -193,9 +202,12 @@ class SynthesisService:
         voice: str,
         raw_tts_dir: Path | None = None,
     ) -> TranscriptDocument:
+        total_segments = len(transcript.segments)
         if not self.alignment.enabled:
+            print(f"[tts] Alignment disabled; synthesizing {total_segments} segments")
             passthrough_segments = []
-            for segment in transcript.segments:
+            for index, segment in enumerate(transcript.segments, start=1):
+                print(f"[tts] Synthesizing {index}/{total_segments} {segment.id}")
                 output_path = tts_dir / f"{segment.id}.wav"
                 self.provider.synthesize_segment(segment, output_path, voice)
                 passthrough_segments.append(
@@ -216,19 +228,30 @@ class SynthesisService:
                 )
             return transcript.model_copy(update={"segments": passthrough_segments})
 
+        print(f"[tts] Starting synthesis with duration alignment: segments={total_segments}")
         raw_dir = raw_tts_dir or tts_dir
         synthesized_segments = []
         for index, segment in enumerate(transcript.segments):
-            next_segment = transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
-            synthesized_segments.append(
-                self.process_segment(
-                    segment=segment,
-                    next_segment=next_segment,
-                    tts_dir=tts_dir,
-                    raw_tts_dir=raw_dir,
-                    voice=voice,
-                )
+            next_segment = (
+                transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
             )
+            print(f"[tts] Synthesizing {index + 1}/{total_segments} {segment.id}")
+            processed_segment = self.process_segment(
+                segment=segment,
+                next_segment=next_segment,
+                tts_dir=tts_dir,
+                raw_tts_dir=raw_dir,
+                voice=voice,
+            )
+            actions = ",".join(processed_segment.correction_actions) or "none"
+            print(
+                f"[tts] Finished {segment.id}: "
+                f"target={format_optional_seconds(processed_segment.target_duration)} "
+                f"raw={format_optional_seconds(processed_segment.initial_tts_duration)} "
+                f"final={format_optional_seconds(processed_segment.tts_duration)} "
+                f"status={processed_segment.duration_status} actions={actions}"
+            )
+            synthesized_segments.append(processed_segment)
         return transcript.model_copy(update={"segments": synthesized_segments})
 
     def process_segment(
@@ -276,18 +299,27 @@ class SynthesisService:
                 raw_duration,
                 self.alignment,
             )
-            if can_apply_time_stretch(required_ratio, self.alignment) and required_ratio is not None and required_ratio < 1.0:
+            if (
+                can_apply_time_stretch(required_ratio, self.alignment)
+                and required_ratio is not None
+                and required_ratio < 1.0
+            ):
                 candidate_path = final_path
                 apply_time_stretch(raw_path, candidate_path, required_ratio)
                 candidate_duration = measure_wav_duration(candidate_path)
-                if not has_timeline_collision(segment, next_segment, candidate_duration, self.alignment):
+                if not has_timeline_collision(
+                    segment, next_segment, candidate_duration, self.alignment
+                ):
                     chosen_path = candidate_path
                     chosen_duration = candidate_duration
                     correction_actions.append("time_stretch")
                     time_stretch_ratio = required_ratio
         elif raw_status in {"too_short", "too_long"}:
             required_ratio = compute_required_time_stretch_ratio(target_duration, raw_duration)
-            if can_apply_time_stretch(required_ratio, self.alignment) and required_ratio is not None:
+            if (
+                can_apply_time_stretch(required_ratio, self.alignment)
+                and required_ratio is not None
+            ):
                 candidate_path = final_path
                 apply_time_stretch(raw_path, candidate_path, required_ratio)
                 candidate_duration = measure_wav_duration(candidate_path)
@@ -312,7 +344,9 @@ class SynthesisService:
             shutil.copy2(raw_path, final_path)
             chosen_path = final_path
 
-        final_collision = has_timeline_collision(segment, next_segment, chosen_duration, self.alignment)
+        final_collision = has_timeline_collision(
+            segment, next_segment, chosen_duration, self.alignment
+        )
         if final_collision:
             final_status = MANUAL_REVIEW_PLACEHOLDER
         else:

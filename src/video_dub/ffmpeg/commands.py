@@ -11,7 +11,12 @@ def quote(path: Path | str) -> str:
     return f'"{path}"'
 
 
-def extract_audio_command(input_video: Path, output_audio: Path, sample_rate: int, channels: int) -> str:
+def extract_audio_command(
+    input_video: Path,
+    output_audio: Path,
+    sample_rate: int,
+    channels: int,
+) -> str:
     return (
         "ffmpeg -y "
         f"-i {quote(input_video)} "
@@ -34,15 +39,14 @@ def compose_dub_audio_command(transcript: TranscriptDocument, output_audio: Path
     if not valid_segments:
         raise ValueError("No TTS segment audio paths found for composition")
 
-    input_args = " ".join(
-        f"-i {quote(cast(Path, segment.tts_path))}" for segment in valid_segments
-    )
+    input_args = " ".join(f"-i {quote(cast(Path, segment.tts_path))}" for segment in valid_segments)
     filter_parts: list[str] = []
     mix_inputs: list[str] = []
     for index, segment in enumerate(valid_segments):
         filter_parts.append(build_compose_segment_filter(segment, index))
         mix_inputs.append(f"[a{index}]")
-    filter_complex = ";".join(filter_parts) + f";{''.join(mix_inputs)}amix=inputs={len(valid_segments)}:normalize=0[out]"
+    mix_filter = f"{''.join(mix_inputs)}amix=inputs={len(valid_segments)}:normalize=0[out]"
+    filter_complex = ";".join(filter_parts) + f";{mix_filter}"
     return (
         "ffmpeg -y "
         f"{input_args} "
@@ -52,7 +56,12 @@ def compose_dub_audio_command(transcript: TranscriptDocument, output_audio: Path
     )
 
 
-def mux_soft_subtitle_command(input_video: Path, dub_audio: Path, subtitle_srt: Path, output_video: Path) -> str:
+def mux_soft_subtitle_command(
+    input_video: Path,
+    dub_audio: Path,
+    subtitle_srt: Path,
+    output_video: Path,
+) -> str:
     return (
         "ffmpeg -y "
         f"-i {quote(input_video)} "

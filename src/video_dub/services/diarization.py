@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
 from video_dub.providers.pyannote_provider import PyannoteProvider
 

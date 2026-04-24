@@ -45,7 +45,7 @@ class PipelineConfig(BaseModel):
 class TranslationConfig(BaseModel):
     provider: str = "gemini"
     use_stub: bool = True
-    model_name: str = "gemini-2.5-pro"
+    model_name: str = "gemini-flash-latest"
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
 

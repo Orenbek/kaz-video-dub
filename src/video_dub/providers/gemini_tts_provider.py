@@ -35,7 +35,9 @@ class GeminiTTSProvider:
             return output_path
         return self._synthesize_with_gemini(text, output_path, voice, segment.id)
 
-    def _synthesize_with_gemini(self, text: str, output_path: Path, voice: str, segment_id: str) -> Path:
+    def _synthesize_with_gemini(
+        self, text: str, output_path: Path, voice: str, segment_id: str
+    ) -> Path:
         api_key = os.getenv(self.config.api_key_env)
         if not api_key:
             raise RuntimeError(f"Missing {self.config.api_key_env} for Gemini TTS")
@@ -71,9 +73,14 @@ class GeminiTTSProvider:
                 last_error = exc
                 if attempt == self.config.max_retries:
                     break
+                print(
+                    f"[tts] Gemini retry {attempt + 1}/{self.config.max_retries} "
+                    f"for {segment_id} after error: {exc}"
+                )
                 time.sleep(self.config.retry_delay_seconds)
         raise RuntimeError(
-            f"Gemini TTS failed for segment {segment_id} after {self.config.max_retries} attempts: {last_error}"
+            "Gemini TTS failed for "
+            f"segment {segment_id} after {self.config.max_retries} attempts: {last_error}"
         ) from last_error
 
     def _extract_pcm_bytes(self, response: Any) -> bytes:
@@ -88,10 +95,13 @@ class GeminiTTSProvider:
             if data:
                 return data
 
-        text_parts = [part.text.strip() for part in parts if getattr(part, "text", None) and part.text.strip()]
+        text_parts = [
+            part.text.strip() for part in parts if getattr(part, "text", None) and part.text.strip()
+        ]
         if text_parts:
             raise RuntimeError(
-                "Gemini TTS returned text instead of audio data; retry may help for preview-model behavior"
+                "Gemini TTS returned text instead of audio data; "
+                "retry may help for preview-model behavior"
             )
         raise RuntimeError("Gemini TTS response did not contain inline audio data")
 
