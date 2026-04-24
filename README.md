@@ -72,7 +72,8 @@ The project is wired for the Gemini API Python SDK pattern documented for TTS:
 - saved as mono 24kHz 16-bit PCM WAV
 
 Default config is in `configs/default.yaml:1`.
-Default voice is `Kore`, based on the Google TTS example shape. You can change it in `configs/default.yaml:1`.
+Default Gemini voice is `Kore`, based on the Google TTS example shape.
+Change it with `tts.gemini_voice_name` in `configs/default.yaml:1`.
 
 ## Documentation
 - `docs/designs/` — near-term technical designs intended to guide implementation.

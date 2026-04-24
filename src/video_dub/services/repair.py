@@ -72,7 +72,7 @@ def apply_segment_repairs(
             next_segment=next_segment,
             tts_dir=layout.tts_dir,
             raw_tts_dir=layout.tts_raw_dir,
-            voice=config.tts.voice,
+            voice=config.tts.gemini_voice_name or config.tts.voice,
         )
         prepared = compose_service.prepare_segment(synthesized, next_segment)
         updated_segments.append(prepared)

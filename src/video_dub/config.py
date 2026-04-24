@@ -13,6 +13,8 @@ class AudioConfig(BaseModel):
 
 class TTSConfig(BaseModel):
     voice: str = "Kore"
+    gemini_voice_name: str | None = None
+    gemini_prompt_preamble: str | None = None
     model_name: str = "gemini-3.1-flash-tts-preview"
     use_stub: bool = True
     sample_rate: int = 24000

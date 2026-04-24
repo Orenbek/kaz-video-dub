@@ -13,7 +13,11 @@ from video_dub.providers.gemini_translate_provider import (
     GeminiTranslateConfig,
     GeminiTranslateProvider,
 )
-from video_dub.providers.gemini_tts_provider import GeminiTTSConfig, GeminiTTSProvider
+from video_dub.providers.gemini_tts import (
+    DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE,
+    GeminiTTSConfig,
+    GeminiTTSProvider,
+)
 from video_dub.providers.whisperx_provider import WhisperXConfig, WhisperXProvider
 from video_dub.services.audio_compose import AudioComposeService
 from video_dub.services.audio_extract import AudioExtractor
@@ -157,6 +161,9 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
     provider = GeminiTTSProvider(
         GeminiTTSConfig(
             model_name=config.tts.model_name,
+            voice_name=config.tts.gemini_voice_name,
+            prompt_preamble=config.tts.gemini_prompt_preamble or DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE,
+            language=config.target_language,
             use_stub=config.tts.use_stub,
             sample_rate=config.tts.sample_rate,
             max_retries=config.tts.max_retries,
@@ -230,15 +237,16 @@ def run_tts_compose_and_mux(
     context: PipelineContext, transcript_kk: TranscriptDocument
 ) -> TranscriptDocument:
     tts_service = build_tts_service(context.config)
+    voice_name = context.config.tts.gemini_voice_name or context.config.tts.voice
     print(
         f"[pipeline] Starting TTS synthesis: segments={len(transcript_kk.segments)} "
-        f"voice={context.config.tts.voice}"
+        f"voice={voice_name}"
     )
     transcript_with_tts = tts_service.run(
         transcript_kk,
         tts_dir=context.layout.tts_dir,
         raw_tts_dir=context.layout.tts_raw_dir,
-        voice=context.config.tts.voice,
+        voice=voice_name,
     )
 
     print("[pipeline] Preparing synthesized segments for timeline composition")
