@@ -143,14 +143,14 @@ Add a `tts_alignment` section in `configs/default.yaml`.
 
 Example fields:
 - `enabled: true`
-- `preferred_ratio_tolerance: 0.08`
-- `max_ratio_tolerance: 0.15`
+- `preferred_ratio_tolerance: 0.12`
+- `max_ratio_tolerance: 0.25`
 - `severe_long_ratio: 1.35`
 - `short_ratio: 0.85`
 - `enable_time_stretch: true`
-- `max_time_stretch_ratio: 0.08`
+- `max_time_stretch_ratio: 0.30`
 - `pad_with_silence: true`
-- `allow_minor_overhang_seconds: 0.15`
+- `allow_minor_overhang_seconds: 0.25`
 - `manual_review_on_failure: true`
 
 These names are illustrative; exact naming can be refined during implementation.

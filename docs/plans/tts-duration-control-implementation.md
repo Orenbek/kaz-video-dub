@@ -95,10 +95,10 @@ In `configs/default.yaml`, add a new section for duration control.
 
 Suggested Phase 1 fields:
 - `tts_alignment.enabled: true`
-- `tts_alignment.preferred_ratio_tolerance: 0.08`
-- `tts_alignment.max_ratio_tolerance: 0.15`
+- `tts_alignment.preferred_ratio_tolerance: 0.12`
+- `tts_alignment.max_ratio_tolerance: 0.25`
 - `tts_alignment.pad_with_silence: true`
-- `tts_alignment.allow_minor_overhang_seconds: 0.15`
+- `tts_alignment.allow_minor_overhang_seconds: 0.25`
 - `tts_alignment.manual_review_on_failure: true`
 
 In `src/video_dub/config.py`, expose typed config accessors for these values.
@@ -191,7 +191,7 @@ In `src/video_dub/services/synthesis.py` or a small audio helper module:
 
 Suggested config:
 - `tts_alignment.enable_time_stretch: true`
-- `tts_alignment.max_time_stretch_ratio: 0.08`
+- `tts_alignment.max_time_stretch_ratio: 0.30`
 - `tts_alignment.min_time_stretch_improvement_seconds: 0.05`
 
 #### 2. Apply collision-first correction logic

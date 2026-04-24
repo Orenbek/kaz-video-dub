@@ -34,25 +34,26 @@ tts:
 tts_alignment:
   # Master switch for segment-level duration measurement and alignment metadata.
   enabled: true
-  # Preferred duration window around target_duration. 0.08 means 92%~108% is considered preferred.
-  preferred_ratio_tolerance: 0.08
-  # Acceptable duration window around target_duration. 0.15 means 85%~115% is still acceptable.
-  max_ratio_tolerance: 0.15
+  # Preferred duration window around target_duration. 0.12 means 88%~112% is considered preferred.
+  preferred_ratio_tolerance: 0.12
+  # Acceptable duration window around target_duration. 0.25 means 75%~125% is still acceptable.
+  max_ratio_tolerance: 0.25
   # Allow bounded acoustic time-stretch during TTS alignment when it clearly improves fit.
   enable_time_stretch: true
-  # Maximum absolute time-stretch adjustment. 0.08 means at most +/-8% speed change.
-  max_time_stretch_ratio: 0.08
+  # Maximum absolute time-stretch adjustment. 0.30 means at most +/-30% duration adjustment.
+  # Gemini TTS often needs moderate compression; larger mismatches should go to repair.
+  max_time_stretch_ratio: 0.30
   # Minimum absolute error reduction required before applying time-stretch in non-collision cases.
   # Example: 0.05 means stretch is skipped unless it improves duration fit by at least 50ms.
   min_time_stretch_improvement_seconds: 0.05
   # If synthesized speech ends early, allow compose stage to pad trailing silence up to target duration.
   pad_with_silence: true
   # Allow small timeline overhang past the next segment start before treating it as a collision.
-  allow_minor_overhang_seconds: 0.15
+  allow_minor_overhang_seconds: 0.25
   # Allow compose stage to remove detected trailing silence to resolve small collisions.
   trim_trailing_silence: true
   # Upper bound on how much detected trailing silence may be removed from a segment.
-  max_trailing_silence_trim_seconds: 0.25
+  max_trailing_silence_trim_seconds: 1.0
   # If timing remains unsafe after allowed corrections, mark the segment for manual review instead of failing silently.
   manual_review_on_failure: true
 

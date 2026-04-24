@@ -24,15 +24,15 @@ class TTSConfig(BaseModel):
 
 class TTSAlignmentConfig(BaseModel):
     enabled: bool = True
-    preferred_ratio_tolerance: float = 0.08
-    max_ratio_tolerance: float = 0.15
+    preferred_ratio_tolerance: float = 0.12
+    max_ratio_tolerance: float = 0.25
     enable_time_stretch: bool = True
-    max_time_stretch_ratio: float = 0.08
+    max_time_stretch_ratio: float = 0.30
     min_time_stretch_improvement_seconds: float = 0.05
     pad_with_silence: bool = True
-    allow_minor_overhang_seconds: float = 0.15
+    allow_minor_overhang_seconds: float = 0.25
     trim_trailing_silence: bool = True
-    max_trailing_silence_trim_seconds: float = 0.25
+    max_trailing_silence_trim_seconds: float = 1.0
     manual_review_on_failure: bool = True
 
 

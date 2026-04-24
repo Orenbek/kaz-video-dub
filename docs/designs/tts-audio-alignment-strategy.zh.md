@@ -478,17 +478,17 @@ TTS 阶段后输出：
 ```yaml
 tts_alignment:
   enabled: true
-  preferred_ratio_tolerance: 0.08
-  max_ratio_tolerance: 0.15
+  preferred_ratio_tolerance: 0.12
+  max_ratio_tolerance: 0.25
 
   enable_time_stretch: true
-  max_time_stretch_ratio: 0.08
+  max_time_stretch_ratio: 0.30
   min_time_stretch_improvement_seconds: 0.05
 
   pad_with_silence: true
-  allow_minor_overhang_seconds: 0.15
+  allow_minor_overhang_seconds: 0.25
   trim_trailing_silence: true
-  max_trailing_silence_trim_seconds: 0.25
+  max_trailing_silence_trim_seconds: 1.0
 
   manual_review_on_failure: true
 ```

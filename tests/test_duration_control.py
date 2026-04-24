@@ -48,23 +48,33 @@ def test_compute_duration_ratio() -> None:
     assert compute_duration_ratio(0.0, 1.0) is None
 
 
+def test_tts_alignment_defaults_favor_bounded_stretch_over_manual_review() -> None:
+    alignment = TTSAlignmentConfig()
+
+    assert alignment.preferred_ratio_tolerance == 0.12
+    assert alignment.max_ratio_tolerance == 0.25
+    assert alignment.max_time_stretch_ratio == 0.30
+    assert alignment.allow_minor_overhang_seconds == 0.25
+    assert alignment.max_trailing_silence_trim_seconds == 1.0
+
+
 def test_classify_duration_only_thresholds() -> None:
     alignment = TTSAlignmentConfig()
 
     assert (
-        classify_duration_only(target_duration=1.0, actual_duration=1.04, alignment=alignment)
+        classify_duration_only(target_duration=1.0, actual_duration=1.10, alignment=alignment)
         == "preferred"
     )
     assert (
-        classify_duration_only(target_duration=1.0, actual_duration=1.12, alignment=alignment)
+        classify_duration_only(target_duration=1.0, actual_duration=1.20, alignment=alignment)
         == "acceptable"
     )
     assert (
-        classify_duration_only(target_duration=1.0, actual_duration=0.8, alignment=alignment)
+        classify_duration_only(target_duration=1.0, actual_duration=0.7, alignment=alignment)
         == "too_short"
     )
     assert (
-        classify_duration_only(target_duration=1.0, actual_duration=1.2, alignment=alignment)
+        classify_duration_only(target_duration=1.0, actual_duration=1.3, alignment=alignment)
         == "too_long"
     )
 
@@ -359,7 +369,7 @@ def test_synthesis_service_leaves_acceptable_non_collision_segment_untouched(
         segments=[Segment(id="seg1", start=0.0, end=1.0, text_en="a", text_kk="aa")],
     )
 
-    monkeypatch.setattr("video_dub.services.synthesis.measure_wav_duration", lambda path: 1.12)
+    monkeypatch.setattr("video_dub.services.synthesis.measure_wav_duration", lambda path: 1.20)
 
     result = service.run(
         transcript, tts_dir=tmp_path / "tts", raw_tts_dir=tmp_path / "tts_raw", voice="Kore"
@@ -420,7 +430,7 @@ def test_synthesis_service_uses_collision_first_bounded_compression(
     assert segment.correction_actions == ["time_stretch"]
     assert segment.time_stretch_ratio == pytest.approx(1.1 / 1.16)
     assert segment.tts_duration == pytest.approx(1.08)
-    assert segment.duration_status == "too_short"
+    assert segment.duration_status == "acceptable"
     assert segment.has_timeline_collision is False
 
 
@@ -550,7 +560,7 @@ def test_synthesis_service_skips_non_collision_stretch_when_required_ratio_excee
         segments=[Segment(id="seg1", start=0.0, end=1.0, text_en="a", text_kk="aa")],
     )
 
-    monkeypatch.setattr("video_dub.services.synthesis.measure_wav_duration", lambda path: 1.2)
+    monkeypatch.setattr("video_dub.services.synthesis.measure_wav_duration", lambda path: 1.4)
 
     apply_called = False
 
