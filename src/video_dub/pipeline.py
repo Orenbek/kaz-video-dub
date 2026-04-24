@@ -95,20 +95,48 @@ def require_manifest_input_video(input_video: Path | str | None) -> Path:
     return Path(cast(Path | str, input_video))
 
 
+def select_transcription_audio_source(manifest: RunManifest) -> Path:
+    if manifest.input_audio is not None:
+        return Path(cast(Path | str, manifest.input_audio))
+    return require_manifest_input_video(manifest.input_video)
+
+
+def copy_input_file(
+    input_path: Path,
+    input_dir: Path,
+    destination_name: str | None = None,
+) -> Path:
+    copied_input = input_dir / (destination_name or input_path.name)
+    if input_path.resolve() != copied_input.resolve():
+        shutil.copy2(input_path, copied_input)
+    return copied_input
+
+
 def initialize_run(
-    config: AppConfig, input_video: Path, job_id: str | None = None
+    config: AppConfig,
+    input_video: Path,
+    job_id: str | None = None,
+    input_audio: Path | None = None,
 ) -> PipelineContext:
     resolved_job_id = job_id or make_job_id()
     layout = RunLayout(config.run_root / resolved_job_id)
     layout.ensure()
 
-    copied_input = layout.input_dir / input_video.name
-    if input_video.resolve() != copied_input.resolve():
-        shutil.copy2(input_video, copied_input)
+    copied_video = copy_input_file(input_video, layout.input_dir)
+    copied_audio = None
+    if input_audio is not None:
+        audio_name = input_audio.name
+        if (
+            input_audio.resolve() != input_video.resolve()
+            and audio_name == copied_video.name
+        ):
+            audio_name = f"audio_{audio_name}"
+        copied_audio = copy_input_file(input_audio, layout.input_dir, audio_name)
 
     manifest = RunManifest(
         job_id=resolved_job_id,
-        input_video=str(copied_input),
+        input_video=str(copied_video),
+        input_audio=str(copied_audio) if copied_audio is not None else None,
         source_language=config.source_language,
         target_language=config.target_language,
         subtitle_language=config.subtitle_language,
@@ -145,7 +173,10 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
 
 def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     extractor = AudioExtractor(context.config)
-    extractor.extract(require_manifest_input_video(context.manifest.input_video), context.layout.source_audio_path)
+    extractor.extract(
+        select_transcription_audio_source(context.manifest),
+        context.layout.source_audio_path,
+    )
     context.manifest.steps["extract_audio"] = "done"
     context.manifest.artifacts["source_audio"] = str(context.layout.source_audio_path)
     context.store.write_manifest(context.manifest)

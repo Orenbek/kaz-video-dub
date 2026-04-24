@@ -15,6 +15,7 @@ class WhisperXConfig(BaseModel):
     device: str = "cpu"
     compute_type: str = "int8"
     batch_size: int = 8
+    vad_method: str = "pyannote"
 
 
 class WhisperXProvider:
@@ -29,6 +30,7 @@ class WhisperXProvider:
             device=self.config.device,
             compute_type=self.config.compute_type,
             language=self.config.language,
+            vad_method=self.config.vad_method,
         )
         transcription = model.transcribe(str(audio_path), batch_size=self.config.batch_size)
 

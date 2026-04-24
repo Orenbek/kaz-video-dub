@@ -38,6 +38,7 @@ class DurationSummary(BaseModel):
 class RunManifest(BaseModel):
     job_id: str
     input_video: Path | str | None = None
+    input_audio: Path | str | None = None
     source_language: str = "en"
     target_language: str = "kk"
     subtitle_language: str = "zh"

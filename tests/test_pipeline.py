@@ -12,7 +12,9 @@ from video_dub.pipeline import (
     build_manual_review_segment_row,
     initialize_run,
     require_manifest_input_video,
+    run_extract_and_transcribe,
     run_tts_compose_and_mux,
+    select_transcription_audio_source,
 )
 from video_dub.services.repair import apply_segment_repairs, rebuild_run_outputs
 from video_dub.storage.artifacts import ArtifactStore
@@ -33,6 +35,71 @@ def test_initialize_run_copies_input_and_writes_manifest(tmp_path: Path) -> None
     assert context.layout.manifest_path.exists()
     assert context.layout.source_audio_path.parent.exists()
     assert context.manifest.duration_summary.total_segments == 0
+
+
+def test_initialize_run_copies_optional_input_audio_and_writes_manifest(
+    tmp_path: Path,
+) -> None:
+    input_video = tmp_path / "silent.mp4"
+    input_audio = tmp_path / "audio.m4a"
+    input_video.write_bytes(b"fake-video")
+    input_audio.write_bytes(b"fake-audio")
+
+    config = AppConfig(run_root=tmp_path / "runs")
+    context = initialize_run(config, input_video, job_id="job-audio", input_audio=input_audio)
+
+    assert context.manifest.input_audio is not None
+    copied_audio = Path(str(context.manifest.input_audio))
+    assert require_manifest_input_video(context.manifest.input_video).exists()
+    assert copied_audio.exists()
+    assert copied_audio.read_bytes() == b"fake-audio"
+    assert select_transcription_audio_source(context.manifest) == copied_audio
+
+
+def test_run_extract_and_transcribe_uses_manifest_input_audio(
+    tmp_path: Path, monkeypatch
+) -> None:
+    input_video = tmp_path / "silent.mp4"
+    input_audio = tmp_path / "audio.m4a"
+    input_video.write_bytes(b"fake-video")
+    input_audio.write_bytes(b"fake-audio")
+    context = initialize_run(
+        AppConfig(run_root=tmp_path / "runs"),
+        input_video,
+        job_id="job-transcribe-audio",
+        input_audio=input_audio,
+    )
+    extracted_from = []
+
+    class FakeAudioExtractor:
+        def __init__(self, config):
+            self.config = config
+
+        def extract(self, input_media, output_audio):
+            extracted_from.append(input_media)
+            output_audio.write_bytes(b"normalized-wav")
+            return output_audio
+
+    class FakeWhisperXProvider:
+        def __init__(self, config):
+            self.config = config
+
+    class FakeTranscriptionService:
+        def __init__(self, provider):
+            self.provider = provider
+
+        def run(self, audio_path):
+            return TranscriptDocument(source_audio_path=audio_path, language="en", segments=[])
+
+    monkeypatch.setattr("video_dub.pipeline.AudioExtractor", FakeAudioExtractor)
+    monkeypatch.setattr("video_dub.pipeline.WhisperXProvider", FakeWhisperXProvider)
+    monkeypatch.setattr("video_dub.pipeline.TranscriptionService", FakeTranscriptionService)
+
+    transcript = run_extract_and_transcribe(context)
+
+    assert extracted_from == [Path(str(context.manifest.input_audio))]
+    assert transcript.source_audio_path == context.layout.source_audio_path
+    assert context.manifest.artifacts["source_audio"] == str(context.layout.source_audio_path)
 
 
 def test_run_layout_exposes_manual_review_paths(tmp_path: Path) -> None:

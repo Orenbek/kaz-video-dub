@@ -33,6 +33,16 @@ Stub mode is enabled by default for Gemini translation and TTS, so the pipeline 
 pixi run run --input path/to/input.mp4
 ```
 
+If the source video is silent and the audio was downloaded separately, pass the video as
+`--input` and the audio as `--input-audio`:
+
+```bash
+pixi run run --input path/to/video.mp4 --input-audio path/to/audio.m4a
+```
+
+The run manifest records both files. Transcription uses `--input-audio` when present, while
+the final mux still uses the video from `--input`.
+
 ## Real provider run
 1. Edit `configs/default.yaml`
 2. Set:
@@ -70,7 +80,9 @@ Default voice is `Kore`, based on the Google TTS example shape. You can change i
 ## Common commands
 ```bash
 pixi run run --input path/to/input.mp4
+pixi run run --input path/to/video.mp4 --input-audio path/to/audio.m4a
 pixi run transcribe --input path/to/input.mp4
+pixi run transcribe --input path/to/video.mp4 --input-audio path/to/audio.m4a
 pixi run translate --run-dir runs/<job-id>
 pixi run tts --run-dir runs/<job-id>
 pixi run compose --run-dir runs/<job-id>

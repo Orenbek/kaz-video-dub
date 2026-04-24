@@ -38,6 +38,10 @@ InputVideoOption = Annotated[
     Path,
     typer.Option(exists=True, file_okay=True, dir_okay=False),
 ]
+InputAudioOption = Annotated[
+    Path | None,
+    typer.Option(exists=True, file_okay=True, dir_okay=False),
+]
 RunDirOption = Annotated[
     Path,
     typer.Option(exists=True, file_okay=False, dir_okay=True),
@@ -63,6 +67,7 @@ def load_existing_context(run_dir: Path, config_path: Path):
         app_config,
         require_manifest_input_video(manifest.input_video),
         job_id=manifest.job_id,
+        input_audio=Path(manifest.input_audio) if manifest.input_audio is not None else None,
     )
     context.manifest = manifest
     context.store = store
@@ -72,11 +77,12 @@ def load_existing_context(run_dir: Path, config_path: Path):
 @app.command()
 def run(
     input: InputVideoOption,
+    input_audio: InputAudioOption = None,
     config: ConfigOption = DEFAULT_CONFIG_PATH,
     job_id: JobIdOption = None,
 ) -> None:
     app_config = load_config(config)
-    context = initialize_run(app_config, input, job_id=job_id)
+    context = initialize_run(app_config, input, job_id=job_id, input_audio=input_audio)
     transcript = run_extract_and_transcribe(context)
     transcript_kk, _ = run_translate_and_subtitle(context, transcript)
     transcript_with_tts = run_tts_compose_and_mux(context, transcript_kk)
@@ -98,11 +104,12 @@ def run(
 @app.command()
 def transcribe(
     input: InputVideoOption,
+    input_audio: InputAudioOption = None,
     config: ConfigOption = DEFAULT_CONFIG_PATH,
     job_id: JobIdOption = None,
 ) -> None:
     app_config = load_config(config)
-    context = initialize_run(app_config, input, job_id=job_id)
+    context = initialize_run(app_config, input, job_id=job_id, input_audio=input_audio)
     transcript = run_extract_and_transcribe(context)
     print(
         f"Produced {len(transcript.segments)} transcript segments at "
