@@ -14,6 +14,7 @@ from video_dub.pipeline import (
     PipelineContext,
     build_manual_review_segment_row,
     initialize_run,
+    run_diarization,
     run_extract_and_transcribe,
     run_translate_and_subtitle,
     run_tts_compose_and_mux,
@@ -115,13 +116,33 @@ def translate(
     config: ConfigOption = DEFAULT_CONFIG_PATH,
 ) -> None:
     context = load_existing_context(run_dir, config)
-    transcript = read_model(context.layout.transcript_en_path, TranscriptDocument)
+    transcript_path = (
+        context.layout.transcript_en_diarized_path
+        if context.layout.transcript_en_diarized_path.exists()
+        else context.layout.transcript_en_path
+    )
+    transcript = read_model(transcript_path, TranscriptDocument)
     transcript_kk, _ = run_translate_and_subtitle(context, transcript)
     print(
         f"Produced {len(transcript_kk.segments)} translated segments at "
         f"{context.layout.transcript_kk_path}"
     )
     print(f"Wrote subtitles to {context.layout.subtitles_zh_path}")
+
+
+@app.command()
+def diarize(
+    run_dir: RunDirOption,
+    config: ConfigOption = DEFAULT_CONFIG_PATH,
+) -> None:
+    context = load_existing_context(run_dir, config)
+    transcript = read_model(context.layout.transcript_en_path, TranscriptDocument)
+    diarized = run_diarization(context, transcript)
+    assigned = sum(1 for segment in diarized.segments if segment.speaker is not None)
+    print(
+        f"Assigned speakers for {assigned}/{len(diarized.segments)} segments at "
+        f"{context.layout.transcript_en_diarized_path}"
+    )
 
 
 @app.command()

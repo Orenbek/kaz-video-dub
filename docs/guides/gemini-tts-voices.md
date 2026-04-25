@@ -1,17 +1,28 @@
 # Gemini TTS voices
 
 Gemini TTS uses a prebuilt `voice_name` inside `speech_config.voice_config`.
-Configure it with `tts.gemini_voice_name`:
+Configure the fallback voice with `tts.voice`:
 
 ```yaml
 tts:
   use_stub: false
   model_name: gemini-3.1-flash-tts-preview
-  gemini_voice_name: Kore
+  voice: Kore
 ```
 
-`tts.voice` is still supported as a legacy fallback, but Gemini runs should prefer
-`tts.gemini_voice_name` so the config matches the provider API field.
+For diarized material, configure per-speaker voices with
+`tts.gemini_voice_names`. Speaker labels come from the diarization stage:
+
+```yaml
+tts:
+  voice: Kore
+  gemini_voice_names:
+    SPEAKER_00: Kore
+    SPEAKER_01: Charon
+```
+
+Segments whose speaker is missing or absent from the map use
+`tts.gemini_voice_names.SPEAKER_00`, then fall back to `tts.voice`.
 
 You can compare these speaker voices in Google AI Studio:
 https://aistudio.google.com/generate-speech
@@ -79,7 +90,7 @@ Override it with `tts.gemini_prompt_preamble` when comparing variants:
 
 ```yaml
 tts:
-  gemini_voice_name: Alnilam
+  voice: Alnilam
   gemini_prompt_preamble: |
     Synthesize natural spoken Kazakh audio from the transcript below.
     Read only the transcript text; do not read these instructions.

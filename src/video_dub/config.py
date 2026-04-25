@@ -13,7 +13,7 @@ class AudioConfig(BaseModel):
 
 class TTSConfig(BaseModel):
     voice: str = "Kore"
-    gemini_voice_name: str | None = None
+    gemini_voice_names: dict[str, str] = Field(default_factory=dict)
     gemini_prompt_preamble: str | None = None
     model_name: str = "gemini-3.1-flash-tts-preview"
     use_stub: bool = True
@@ -40,8 +40,12 @@ class VideoConfig(BaseModel):
     subtitle_mode: str = "soft"
 
 
-class PipelineConfig(BaseModel):
-    enable_diarization: bool = False
+class DiarizationConfig(BaseModel):
+    model_name: str = "pyannote/speaker-diarization-3.1"
+    device: str = "cpu"
+    num_speakers: int | None = None
+    min_speakers: int | None = None
+    max_speakers: int | None = None
 
 
 class TranslationConfig(BaseModel):
@@ -61,7 +65,7 @@ class AppConfig(BaseModel):
     tts: TTSConfig = Field(default_factory=TTSConfig)
     tts_alignment: TTSAlignmentConfig = Field(default_factory=TTSAlignmentConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)
-    pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
+    diarization: DiarizationConfig = Field(default_factory=DiarizationConfig)
     translation: TranslationConfig = Field(default_factory=TranslationConfig)
 
 

@@ -13,18 +13,6 @@ from video_dub.providers.gemini_tts_provider import (
 )
 
 
-def test_gemini_tts_voice_name_overrides_legacy_voice() -> None:
-    provider = GeminiTTSProvider(GeminiTTSConfig(voice_name="Puck"))
-
-    assert provider.resolve_voice_name("Kore") == "Puck"
-
-
-def test_gemini_tts_voice_name_falls_back_to_legacy_voice() -> None:
-    provider = GeminiTTSProvider(GeminiTTSConfig())
-
-    assert provider.resolve_voice_name("Kore") == "Kore"
-
-
 def test_gemini_tts_voice_names_include_documented_options() -> None:
     assert "Kore" in GEMINI_TTS_VOICE_NAMES
     assert "Sadaltager" in GEMINI_TTS_VOICE_NAMES

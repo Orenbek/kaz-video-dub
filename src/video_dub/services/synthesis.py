@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Protocol
+from typing import Mapping, Protocol
 
 from video_dub.config import TTSAlignmentConfig
 from video_dub.ffmpeg.probe import probe_duration
@@ -29,6 +29,16 @@ def format_optional_seconds(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"{value:.3f}s"
+
+
+def resolve_segment_voice(
+    segment: Segment,
+    default_voice: str,
+    voices_by_speaker: Mapping[str, str] | None = None,
+) -> str:
+    if segment.speaker and voices_by_speaker and segment.speaker in voices_by_speaker:
+        return voices_by_speaker[segment.speaker]
+    return default_voice
 
 
 def compute_duration_ratio(target_duration: float, actual_duration: float) -> float | None:
@@ -201,15 +211,20 @@ class SynthesisService:
         tts_dir: Path,
         voice: str,
         raw_tts_dir: Path | None = None,
+        voices_by_speaker: Mapping[str, str] | None = None,
     ) -> TranscriptDocument:
         total_segments = len(transcript.segments)
         if not self.alignment.enabled:
             print(f"[tts] Alignment disabled; synthesizing {total_segments} segments")
             passthrough_segments = []
             for index, segment in enumerate(transcript.segments, start=1):
-                print(f"[tts] Synthesizing {index}/{total_segments} {segment.id}")
+                segment_voice = resolve_segment_voice(segment, voice, voices_by_speaker)
+                print(
+                    f"[tts] Synthesizing {index}/{total_segments} {segment.id} "
+                    f"speaker={segment.speaker or 'unknown'} voice={segment_voice}"
+                )
                 output_path = tts_dir / f"{segment.id}.wav"
-                self.provider.synthesize_segment(segment, output_path, voice)
+                self.provider.synthesize_segment(segment, output_path, segment_voice)
                 passthrough_segments.append(
                     segment.model_copy(
                         update={
@@ -235,13 +250,17 @@ class SynthesisService:
             next_segment = (
                 transcript.segments[index + 1] if index + 1 < len(transcript.segments) else None
             )
-            print(f"[tts] Synthesizing {index + 1}/{total_segments} {segment.id}")
+            segment_voice = resolve_segment_voice(segment, voice, voices_by_speaker)
+            print(
+                f"[tts] Synthesizing {index + 1}/{total_segments} {segment.id} "
+                f"speaker={segment.speaker or 'unknown'} voice={segment_voice}"
+            )
             processed_segment = self.process_segment(
                 segment=segment,
                 next_segment=next_segment,
                 tts_dir=tts_dir,
                 raw_tts_dir=raw_dir,
-                voice=voice,
+                voice=segment_voice,
             )
             actions = ",".join(processed_segment.correction_actions) or "none"
             print(

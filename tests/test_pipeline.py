@@ -12,9 +12,11 @@ from video_dub.pipeline import (
     build_manual_review_segment_row,
     initialize_run,
     require_manifest_input_video,
+    run_diarization,
     run_extract_and_transcribe,
     run_tts_compose_and_mux,
     select_transcription_audio_source,
+    should_run_diarization,
 )
 from video_dub.services.repair import apply_segment_repairs, rebuild_run_outputs
 from video_dub.storage.artifacts import ArtifactStore
@@ -56,6 +58,50 @@ def test_initialize_run_copies_optional_input_audio_and_writes_manifest(
     assert select_transcription_audio_source(context.manifest) == copied_audio
 
 
+def test_should_run_diarization_uses_single_speaker_hint() -> None:
+    config = AppConfig()
+    assert should_run_diarization(config) is True
+
+    config.diarization = config.diarization.model_copy(
+        update={"num_speakers": 1, "max_speakers": 1}
+    )
+
+    assert should_run_diarization(config) is False
+
+
+def test_run_diarization_writes_single_speaker_transcript_for_single_speaker_hint(
+    tmp_path: Path, monkeypatch
+) -> None:
+    input_video = tmp_path / "input.mp4"
+    input_video.write_bytes(b"fake-video")
+    config = AppConfig(run_root=tmp_path / "runs")
+    config.diarization = config.diarization.model_copy(
+        update={"num_speakers": 1, "max_speakers": 1}
+    )
+    context = initialize_run(config, input_video, job_id="job-single-speaker")
+    transcript = TranscriptDocument(
+        source_audio_path=Path("source.wav"),
+        language="en",
+        segments=[Segment(id="seg_0001", start=0.0, end=1.0, text_en="Hello")],
+    )
+
+    def fail_if_called(config):
+        raise AssertionError("pyannote provider should not be built for single-speaker hints")
+
+    monkeypatch.setattr("video_dub.pipeline.build_diarization_service", fail_if_called)
+
+    diarized = run_diarization(context, transcript)
+
+    stored = json.loads(context.layout.transcript_en_diarized_path.read_text(encoding="utf-8"))
+    assert diarized.segments[0].speaker == "SPEAKER_00"
+    assert stored["segments"][0]["speaker"] == "SPEAKER_00"
+    assert stored["metadata"]["diarization"]["provider"] == "single_speaker_hint"
+    assert context.manifest.steps["diarize"] == "skipped"
+    assert context.manifest.artifacts["transcript_en_diarized"] == str(
+        context.layout.transcript_en_diarized_path
+    )
+
+
 def test_load_existing_context_preserves_manifest_without_reinitializing(
     tmp_path: Path,
 ) -> None:
@@ -80,15 +126,17 @@ def test_load_existing_context_preserves_manifest_without_reinitializing(
     assert persisted["steps"]["transcribe"] == "done"
 
 
-def test_run_extract_and_transcribe_uses_manifest_input_audio(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_run_extract_and_transcribe_uses_manifest_input_audio(tmp_path: Path, monkeypatch) -> None:
     input_video = tmp_path / "silent.mp4"
     input_audio = tmp_path / "audio.m4a"
     input_video.write_bytes(b"fake-video")
     input_audio.write_bytes(b"fake-audio")
+    config = AppConfig(run_root=tmp_path / "runs")
+    config.diarization = config.diarization.model_copy(
+        update={"num_speakers": 1, "max_speakers": 1}
+    )
     context = initialize_run(
-        AppConfig(run_root=tmp_path / "runs"),
+        config,
         input_video,
         job_id="job-transcribe-audio",
         input_audio=input_audio,
@@ -124,6 +172,76 @@ def test_run_extract_and_transcribe_uses_manifest_input_audio(
     assert extracted_from == [Path(str(context.manifest.input_audio))]
     assert transcript.source_audio_path == context.layout.source_audio_path
     assert context.manifest.artifacts["source_audio"] == str(context.layout.source_audio_path)
+    assert context.manifest.steps["diarize"] == "skipped"
+
+
+def test_run_extract_and_transcribe_runs_diarization_without_single_speaker_hint(
+    tmp_path: Path, monkeypatch
+) -> None:
+    input_video = tmp_path / "input.mp4"
+    input_video.write_bytes(b"fake-video")
+    config = AppConfig(run_root=tmp_path / "runs")
+    context = initialize_run(config, input_video, job_id="job-diarize")
+
+    class FakeAudioExtractor:
+        def __init__(self, config):
+            self.config = config
+
+        def extract(self, input_media, output_audio):
+            output_audio.write_bytes(b"normalized-wav")
+            return output_audio
+
+    class FakeWhisperXProvider:
+        def __init__(self, config):
+            self.config = config
+
+    class FakeTranscriptionService:
+        def __init__(self, provider):
+            self.provider = provider
+
+        def run(self, audio_path):
+            return TranscriptDocument(
+                source_audio_path=audio_path,
+                language="en",
+                segments=[Segment(id="seg_0001", start=0.0, end=1.0, text_en="Hello")],
+            )
+
+    class FakeDiarizationService:
+        def run(self, transcript, audio_path):
+            assert audio_path == context.layout.source_audio_path
+            return transcript.model_copy(
+                update={
+                    "segments": [
+                        transcript.segments[0].model_copy(update={"speaker": "SPEAKER_00"})
+                    ],
+                    "metadata": {
+                        **transcript.metadata,
+                        "diarization": {
+                            "span_count": 1,
+                            "speaker_count": 1,
+                            "assigned_segment_count": 1,
+                        },
+                    },
+                }
+            )
+
+    monkeypatch.setattr("video_dub.pipeline.AudioExtractor", FakeAudioExtractor)
+    monkeypatch.setattr("video_dub.pipeline.WhisperXProvider", FakeWhisperXProvider)
+    monkeypatch.setattr("video_dub.pipeline.TranscriptionService", FakeTranscriptionService)
+    monkeypatch.setattr(
+        "video_dub.pipeline.build_diarization_service",
+        lambda config: FakeDiarizationService(),
+    )
+
+    transcript = run_extract_and_transcribe(context)
+
+    stored = json.loads(context.layout.transcript_en_diarized_path.read_text(encoding="utf-8"))
+    assert transcript.segments[0].speaker == "SPEAKER_00"
+    assert stored["segments"][0]["speaker"] == "SPEAKER_00"
+    assert context.manifest.steps["diarize"] == "done"
+    assert context.manifest.artifacts["transcript_en_diarized"] == str(
+        context.layout.transcript_en_diarized_path
+    )
 
 
 def test_run_layout_exposes_manual_review_paths(tmp_path: Path) -> None:
@@ -172,7 +290,7 @@ def test_run_tts_compose_and_mux_writes_manual_review_artifact(tmp_path: Path, m
     )
 
     class FakeTTSService:
-        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None):
+        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None, voices_by_speaker=None):
             return prepared
 
     class FakeComposeService:
@@ -283,7 +401,7 @@ def test_run_tts_compose_and_mux_writes_overhang_for_unresolved_collision_with_n
     )
 
     class FakeTTSService:
-        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None):
+        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None, voices_by_speaker=None):
             return prepared
 
     class FakeComposeService:
@@ -363,7 +481,7 @@ def test_run_tts_compose_and_mux_skips_duration_control_when_disabled(
     )
 
     class FakeTTSService:
-        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None):
+        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None, voices_by_speaker=None):
             output_path = tts_dir / "seg_1.wav"
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(b"tts")

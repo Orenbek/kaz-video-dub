@@ -18,9 +18,11 @@ from video_dub.providers.gemini_tts import (
     GeminiTTSConfig,
     GeminiTTSProvider,
 )
+from video_dub.providers.pyannote_provider import PyannoteConfig, PyannoteProvider
 from video_dub.providers.whisperx_provider import WhisperXConfig, WhisperXProvider
 from video_dub.services.audio_compose import AudioComposeService
 from video_dub.services.audio_extract import AudioExtractor
+from video_dub.services.diarization import DiarizationService
 from video_dub.services.subtitle import write_srt
 from video_dub.services.synthesis import (
     SynthesisService,
@@ -161,7 +163,6 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
     provider = GeminiTTSProvider(
         GeminiTTSConfig(
             model_name=config.tts.model_name,
-            voice_name=config.tts.gemini_voice_name,
             prompt_preamble=config.tts.gemini_prompt_preamble or DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE,
             language=config.target_language,
             use_stub=config.tts.use_stub,
@@ -171,6 +172,80 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
         )
     )
     return SynthesisService(provider, config.tts_alignment)
+
+
+def should_run_diarization(config: AppConfig) -> bool:
+    return not (config.diarization.num_speakers == 1 and config.diarization.max_speakers == 1)
+
+
+def build_diarization_service(config: AppConfig) -> DiarizationService:
+    provider = PyannoteProvider(
+        PyannoteConfig(
+            model_name=config.diarization.model_name,
+            device=config.diarization.device,
+            num_speakers=config.diarization.num_speakers,
+            min_speakers=config.diarization.min_speakers,
+            max_speakers=config.diarization.max_speakers,
+        )
+    )
+    return DiarizationService(provider)
+
+
+def run_diarization(
+    context: PipelineContext,
+    transcript: TranscriptDocument,
+) -> TranscriptDocument:
+    if not should_run_diarization(context.config):
+        print(
+            "[pipeline] Skipping speaker diarization because "
+            "diarization.num_speakers=1 and diarization.max_speakers=1"
+        )
+        single_speaker_transcript = transcript.model_copy(
+            update={
+                "segments": [
+                    segment.model_copy(update={"speaker": segment.speaker or "SPEAKER_00"})
+                    for segment in transcript.segments
+                ],
+                "metadata": {
+                    **transcript.metadata,
+                    "diarization": {
+                        "provider": "single_speaker_hint",
+                        "span_count": 0,
+                        "speaker_count": 1 if transcript.segments else 0,
+                        "assigned_segment_count": len(transcript.segments),
+                    },
+                },
+            }
+        )
+        context.store.write_transcript_en_diarized(single_speaker_transcript)
+        context.manifest.steps["diarize"] = "skipped"
+        context.manifest.artifacts["transcript_en_diarized"] = str(
+            context.layout.transcript_en_diarized_path
+        )
+        context.store.write_manifest(context.manifest)
+        return single_speaker_transcript
+
+    service = build_diarization_service(context.config)
+    print(
+        f"[pipeline] Starting speaker diarization: "
+        f"model={context.config.diarization.model_name} "
+        f"segments={len(transcript.segments)}"
+    )
+    diarized_transcript = service.run(transcript, context.layout.source_audio_path)
+    summary = diarized_transcript.metadata.get("diarization", {})
+    print(
+        "[pipeline] Diarization finished: "
+        f"speakers={summary.get('speaker_count', 0)} "
+        f"spans={summary.get('span_count', 0)} "
+        f"assigned_segments={summary.get('assigned_segment_count', 0)}"
+    )
+    context.store.write_transcript_en_diarized(diarized_transcript)
+    context.manifest.steps["diarize"] = "done"
+    context.manifest.artifacts["transcript_en_diarized"] = str(
+        context.layout.transcript_en_diarized_path
+    )
+    context.store.write_manifest(context.manifest)
+    return diarized_transcript
 
 
 def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
@@ -200,7 +275,8 @@ def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     context.manifest.steps["align"] = "done"
     context.manifest.artifacts["transcript_en"] = str(context.layout.transcript_en_path)
     context.store.write_manifest(context.manifest)
-    return transcript
+
+    return run_diarization(context, transcript)
 
 
 def run_translate_and_subtitle(
@@ -237,16 +313,21 @@ def run_tts_compose_and_mux(
     context: PipelineContext, transcript_kk: TranscriptDocument
 ) -> TranscriptDocument:
     tts_service = build_tts_service(context.config)
-    voice_name = context.config.tts.gemini_voice_name or context.config.tts.voice
+    default_voice_name = context.config.tts.gemini_voice_names.get(
+        "SPEAKER_00",
+        context.config.tts.voice,
+    )
+    speaker_voice_count = len(context.config.tts.gemini_voice_names)
     print(
         f"[pipeline] Starting TTS synthesis: segments={len(transcript_kk.segments)} "
-        f"voice={voice_name}"
+        f"default_voice={default_voice_name} speaker_voices={speaker_voice_count}"
     )
     transcript_with_tts = tts_service.run(
         transcript_kk,
         tts_dir=context.layout.tts_dir,
         raw_tts_dir=context.layout.tts_raw_dir,
-        voice=voice_name,
+        voice=default_voice_name,
+        voices_by_speaker=context.config.tts.gemini_voice_names,
     )
 
     print("[pipeline] Preparing synthesized segments for timeline composition")

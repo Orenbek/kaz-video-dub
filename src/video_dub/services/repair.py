@@ -14,7 +14,7 @@ from video_dub.pipeline import (
     require_manifest_input_video,
 )
 from video_dub.services.audio_compose import AudioComposeService
-from video_dub.services.synthesis import summarize_duration_statuses
+from video_dub.services.synthesis import resolve_segment_voice, summarize_duration_statuses
 from video_dub.services.video_mux import VideoMuxService
 from video_dub.storage.artifacts import ArtifactStore
 from video_dub.storage.json_store import write_json
@@ -72,7 +72,11 @@ def apply_segment_repairs(
             next_segment=next_segment,
             tts_dir=layout.tts_dir,
             raw_tts_dir=layout.tts_raw_dir,
-            voice=config.tts.gemini_voice_name or config.tts.voice,
+            voice=resolve_segment_voice(
+                repaired_segment,
+                config.tts.gemini_voice_names.get("SPEAKER_00", config.tts.voice),
+                config.tts.gemini_voice_names,
+            ),
         )
         prepared = compose_service.prepare_segment(synthesized, next_segment)
         updated_segments.append(prepared)

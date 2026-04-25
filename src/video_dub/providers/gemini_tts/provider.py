@@ -19,7 +19,6 @@ from video_dub.providers.gemini_tts.voices import validate_voice_name
 
 class GeminiTTSConfig(BaseModel):
     model_name: str = "gemini-3.1-flash-tts-preview"
-    voice_name: str | None = None
     prompt_preamble: str = DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE
     language: str = "kk"
     api_key_env: str = "GEMINI_API_KEY"
@@ -38,20 +37,16 @@ class GeminiTTSProvider:
         text = (segment.text_kk or segment.text_en).strip()
         if not text:
             raise RuntimeError(f"Segment {segment.id} has no text for TTS")
-        voice_name = self.resolve_voice_name(voice)
         if self.config.use_stub:
             self._write_stub_wav(output_path, text)
             return output_path
-        self.validate_voice_name(voice_name)
+        self.validate_voice_name(voice)
         prompt = self.build_tts_prompt(
             text,
             target_duration_seconds=segment.target_duration or segment.duration,
             language=self.config.language,
         )
-        return self._synthesize_with_gemini(prompt, output_path, voice_name, segment.id)
-
-    def resolve_voice_name(self, fallback_voice: str) -> str:
-        return self.config.voice_name or fallback_voice
+        return self._synthesize_with_gemini(prompt, output_path, voice, segment.id)
 
     def validate_voice_name(self, voice_name: str) -> None:
         validate_voice_name(voice_name)

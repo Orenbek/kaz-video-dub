@@ -73,7 +73,9 @@ The project is wired for the Gemini API Python SDK pattern documented for TTS:
 
 Default config is in `configs/default.yaml:1`.
 Default Gemini voice is `Kore`, based on the Google TTS example shape.
-Change it with `tts.gemini_voice_name` in `configs/default.yaml:1`.
+Change the fallback voice with `tts.voice` in `configs/default.yaml:1`.
+For diarized multi-speaker runs, map speaker labels to voices with
+`tts.gemini_voice_names`, for example `SPEAKER_00: Kore` and `SPEAKER_01: Charon`.
 
 ## Documentation
 - `docs/designs/` — near-term technical designs intended to guide implementation.
@@ -86,6 +88,7 @@ pixi run run --input path/to/input.mp4
 pixi run run --input path/to/video.mp4 --input-audio path/to/audio.m4a
 pixi run transcribe --input path/to/input.mp4
 pixi run transcribe --input path/to/video.mp4 --input-audio path/to/audio.m4a
+pixi run diarize --run-dir runs/<job-id>
 pixi run translate --run-dir runs/<job-id>
 pixi run tts --run-dir runs/<job-id>
 pixi run compose --run-dir runs/<job-id>
@@ -100,6 +103,6 @@ pixi run typecheck
 ## Notes
 - The first version keeps all intermediate artifacts on disk under `runs/`.
 - The pipeline is organized around a unified segment data model.
-- Current Gemini TTS integration is single-speaker only.
+- Gemini TTS supports per-speaker prebuilt voice selection, but not voice cloning.
 - Real Gemini TTS is preview-mode API surface, so response quirks and retries may still need hardening.
 - Run `pixi run test` after `pixi install`; the system Python in this repo is not the intended runtime.

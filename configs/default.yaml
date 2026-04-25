@@ -16,8 +16,10 @@ audio:
 tts:
   # Legacy/default voice name passed to the TTS provider.
   voice: Kore
-  # Gemini-specific prebuilt voice_name. When unset, Gemini falls back to `voice`.
-  gemini_voice_name: Kore
+  # Optional per-speaker Gemini prebuilt voice map. Segment speaker labels come from diarization.
+  gemini_voice_names:
+    SPEAKER_00: Kore
+    SPEAKER_01: Charon
   # Optional Gemini TTS prompt preamble. When unset, the provider uses a Kazakh dubbing prompt.
   gemini_prompt_preamble:
   # TTS model identifier.
@@ -61,9 +63,18 @@ video:
   # Subtitle mux mode for final video packaging.
   subtitle_mode: soft
 
-pipeline:
-  # Enable speaker diarization stage when provider support is available.
-  enable_diarization: false
+diarization:
+  # Speaker diarization pipeline identifier.
+  model_name: pyannote/speaker-diarization-3.1
+  # Device used by WhisperX's pyannote diarization wrapper.
+  device: cpu
+  # Optional exact speaker count hint. Set both num_speakers and max_speakers to 1
+  # to skip diarization for known single-speaker material.
+  num_speakers:
+  # Optional lower speaker count hint.
+  min_speakers:
+  # Optional upper speaker count hint.
+  max_speakers:
 
 translation:
   # Translation backend identifier.

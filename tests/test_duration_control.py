@@ -20,6 +20,7 @@ from video_dub.services.synthesis import (
     compute_required_time_stretch_ratio_for_collision,
     has_timeline_collision,
     materially_improves_duration,
+    resolve_segment_voice,
     summarize_duration_statuses,
 )
 
@@ -56,6 +57,40 @@ def test_tts_alignment_defaults_favor_bounded_stretch_over_manual_review() -> No
     assert alignment.max_time_stretch_ratio == 0.30
     assert alignment.allow_minor_overhang_seconds == 0.25
     assert alignment.max_trailing_silence_trim_seconds == 1.0
+
+
+def test_resolve_segment_voice_uses_speaker_voice_map() -> None:
+    default_voice = "Kore"
+    voices_by_speaker = {"SPEAKER_00": "Kore", "SPEAKER_01": "Charon"}
+
+    assert (
+        resolve_segment_voice(
+            Segment(
+                id="seg1",
+                start=0.0,
+                end=1.0,
+                text_en="a",
+                speaker="SPEAKER_01",
+            ),
+            default_voice,
+            voices_by_speaker,
+        )
+        == "Charon"
+    )
+    assert (
+        resolve_segment_voice(
+            Segment(
+                id="seg2",
+                start=0.0,
+                end=1.0,
+                text_en="b",
+                speaker="SPEAKER_02",
+            ),
+            default_voice,
+            voices_by_speaker,
+        )
+        == default_voice
+    )
 
 
 def test_classify_duration_only_thresholds() -> None:
@@ -605,6 +640,45 @@ def test_synthesis_service_skips_duration_control_when_disabled(tmp_path: Path) 
     assert segment.duration_status is None
     assert segment.tts_duration is None
     assert segment.has_timeline_collision is None
+
+
+def test_synthesis_service_uses_speaker_voice_map_when_disabled(tmp_path: Path) -> None:
+    service = SynthesisService(DummyTTSProvider(), TTSAlignmentConfig(enabled=False))
+    transcript = TranscriptDocument(
+        source_audio_path=Path("source.wav"),
+        language="kk",
+        segments=[
+            Segment(
+                id="seg1",
+                start=0.0,
+                end=1.0,
+                text_en="a",
+                text_kk="aa",
+                speaker="SPEAKER_00",
+            ),
+            Segment(
+                id="seg2",
+                start=1.0,
+                end=2.0,
+                text_en="b",
+                text_kk="bb",
+                speaker="SPEAKER_01",
+            ),
+        ],
+    )
+
+    result = service.run(
+        transcript,
+        tts_dir=tmp_path / "tts",
+        raw_tts_dir=tmp_path / "tts_raw",
+        voice="Kore",
+        voices_by_speaker={"SPEAKER_00": "Kore", "SPEAKER_01": "Charon"},
+    )
+
+    assert result.segments[0].tts_path is not None
+    assert result.segments[1].tts_path is not None
+    assert result.segments[0].tts_path.read_bytes() == b"seg1:Kore"
+    assert result.segments[1].tts_path.read_bytes() == b"seg2:Charon"
 
 
 def test_audio_compose_prepare_transcript_is_passthrough_when_disabled() -> None:
