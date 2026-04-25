@@ -4,7 +4,7 @@ from video_dub.providers.gemini_tts_provider import GeminiTTSConfig, GeminiTTSPr
 
 
 def test_extract_pcm_bytes_reads_inline_audio() -> None:
-    provider = GeminiTTSProvider(GeminiTTSConfig(use_stub=False))
+    provider = GeminiTTSProvider(GeminiTTSConfig())
     response = SimpleNamespace(
         candidates=[
             SimpleNamespace(
@@ -21,7 +21,7 @@ def test_extract_pcm_bytes_reads_inline_audio() -> None:
 
 
 def test_extract_pcm_bytes_rejects_text_only_response() -> None:
-    provider = GeminiTTSProvider(GeminiTTSConfig(use_stub=False))
+    provider = GeminiTTSProvider(GeminiTTSConfig())
     response = SimpleNamespace(
         candidates=[
             SimpleNamespace(

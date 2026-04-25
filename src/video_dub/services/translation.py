@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+from typing import Protocol
+
+from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.providers.gemini_translate_provider import GeminiTranslateProvider
+
+
+class TranslationProvider(Protocol):
+    def translate_to_kazakh(self, segments: list[Segment]) -> list[Segment]: ...
+
+    def translate_to_chinese_subtitles(self, segments: list[Segment]) -> list[Segment]: ...
 
 
 class TranslationService:
-    def __init__(self, provider: GeminiTranslateProvider) -> None:
+    def __init__(self, provider: TranslationProvider) -> None:
         self.provider = provider
 
     def to_kazakh(self, transcript: TranscriptDocument) -> TranscriptDocument:

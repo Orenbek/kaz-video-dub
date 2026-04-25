@@ -18,7 +18,7 @@ Extend the current pipeline so that duration control is handled in two places:
 - Near-miss segments can go through bounded time-stretch when it clearly improves fit.
 - Final composed audio avoids unsafe overlap with subsequent segments without trimming voiced content.
 - Run artifacts and manifest expose what corrections were applied and which segments require manual review.
-- Existing stub-mode and current real-provider flow continue to work.
+- Current real-provider flow continues to work.
 
 ## Out of scope
 - New speech provider integration
@@ -383,7 +383,7 @@ Extend `tests/test_tts_pipeline.py` and `tests/test_pipeline.py` for:
 ### Suggested test ordering
 1. pure helper tests
 2. translation prompt tests
-3. synthesis service tests with stubs/mocks
+3. synthesis service tests with mocks
 4. compose tests
 5. pipeline tests
 6. optional real-provider smoke check later in Pixi
@@ -458,7 +458,7 @@ Mitigation:
 ## Recommended execution order
 1. Update translation prompts for rough length control.
 2. Finish Phase 1 visibility and collision metadata.
-3. Run tests and inspect manifest output on stub TTS.
+3. Run tests and inspect manifest output on mocked TTS.
 4. Implement collision-first bounded stretch in Phase 2.
 5. Validate behavior on a handful of short, long, and tight-gap segments.
 6. Implement manual-review artifact and repair-flow reporting in Phase 3.

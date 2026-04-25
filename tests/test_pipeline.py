@@ -10,6 +10,7 @@ from video_dub.models.segment import Segment
 from video_dub.models.transcript import TranscriptDocument
 from video_dub.pipeline import (
     build_manual_review_segment_row,
+    build_transcription_service,
     initialize_run,
     require_manifest_input_video,
     run_diarization,
@@ -18,6 +19,7 @@ from video_dub.pipeline import (
     select_transcription_audio_source,
     should_run_diarization,
 )
+from video_dub.providers.mlx_whisper_provider import MLXWhisperProvider
 from video_dub.services.repair import apply_segment_repairs, rebuild_run_outputs
 from video_dub.storage.artifacts import ArtifactStore
 from video_dub.storage.run_layout import RunLayout
@@ -67,6 +69,23 @@ def test_should_run_diarization_uses_single_speaker_hint() -> None:
     )
 
     assert should_run_diarization(config) is False
+
+
+def test_build_transcription_service_uses_mlx_whisper_provider() -> None:
+    config = AppConfig()
+    config.transcription = config.transcription.model_copy(
+        update={
+            "provider": "mlx_whisper",
+            "mlx_model_name": "mlx-community/whisper-large-v3-turbo",
+        }
+    )
+
+    service = build_transcription_service(config)
+
+    assert isinstance(service.provider, MLXWhisperProvider)
+    assert service.provider.config.model_name == "mlx-community/whisper-large-v3-turbo"
+    assert service.provider.config.language == "en"
+    assert service.provider.config.align_device == "cpu"
 
 
 def test_run_diarization_writes_single_speaker_transcript_for_single_speaker_hint(
@@ -312,7 +331,7 @@ def test_run_tts_compose_and_mux_writes_manual_review_artifact(tmp_path: Path, m
     monkeypatch.setattr("video_dub.pipeline.build_tts_service", lambda config: FakeTTSService())
     monkeypatch.setattr("video_dub.pipeline.AudioComposeService", FakeComposeService)
     monkeypatch.setattr("video_dub.pipeline.VideoMuxService", FakeMuxService)
-    context.layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+    context.layout.subtitles_zh_path.write_text("subtitle", encoding="utf-8")
 
     result = run_tts_compose_and_mux(context, transcript)
 
@@ -423,7 +442,7 @@ def test_run_tts_compose_and_mux_writes_overhang_for_unresolved_collision_with_n
     monkeypatch.setattr("video_dub.pipeline.build_tts_service", lambda config: FakeTTSService())
     monkeypatch.setattr("video_dub.pipeline.AudioComposeService", FakeComposeService)
     monkeypatch.setattr("video_dub.pipeline.VideoMuxService", FakeMuxService)
-    context.layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+    context.layout.subtitles_zh_path.write_text("subtitle", encoding="utf-8")
 
     run_tts_compose_and_mux(context, transcript)
 
@@ -517,7 +536,7 @@ def test_run_tts_compose_and_mux_skips_duration_control_when_disabled(
     monkeypatch.setattr("video_dub.pipeline.build_tts_service", lambda config: FakeTTSService())
     monkeypatch.setattr("video_dub.pipeline.AudioComposeService", FakeComposeService)
     monkeypatch.setattr("video_dub.pipeline.VideoMuxService", FakeMuxService)
-    context.layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+    context.layout.subtitles_zh_path.write_text("subtitle", encoding="utf-8")
 
     result = run_tts_compose_and_mux(context, transcript)
 
@@ -567,7 +586,7 @@ def test_run_tts_compose_and_mux_uses_hard_subtitle_mode(tmp_path: Path, monkeyp
     monkeypatch.setattr("video_dub.pipeline.build_tts_service", lambda config: FakeTTSService())
     monkeypatch.setattr("video_dub.pipeline.AudioComposeService", FakeComposeService)
     monkeypatch.setattr("video_dub.pipeline.VideoMuxService", FakeMuxService)
-    context.layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+    context.layout.subtitles_zh_path.write_text("subtitle", encoding="utf-8")
 
     run_tts_compose_and_mux(context, transcript)
 
@@ -690,7 +709,7 @@ def test_rebuild_run_outputs_refreshes_manual_review_artifact(tmp_path: Path, mo
     layout.ensure()
     input_video = tmp_path / "input.mp4"
     input_video.write_bytes(b"fake-video")
-    layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+    layout.subtitles_zh_path.write_text("subtitle", encoding="utf-8")
     manifest = RunManifest(job_id="job-4", input_video=str(input_video))
     transcript = TranscriptDocument(
         source_audio_path=Path("source.wav"),

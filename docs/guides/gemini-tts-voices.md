@@ -5,7 +5,6 @@ Configure the fallback voice with `tts.voice`:
 
 ```yaml
 tts:
-  use_stub: false
   model_name: gemini-3.1-flash-tts-preview
   voice: Kore
 ```

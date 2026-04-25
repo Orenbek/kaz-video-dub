@@ -12,12 +12,23 @@ class AudioConfig(BaseModel):
     channels: int = 1
 
 
+class TranscriptionConfig(BaseModel):
+    provider: Literal["whisperx", "mlx_whisper"] = "whisperx"
+    model_name: str = "large-v3"
+    device: str = "cpu"
+    compute_type: str = "int8"
+    batch_size: int = 8
+    vad_method: str = "pyannote"
+    mlx_model_name: str = "mlx-community/whisper-large-v3-turbo"
+    align_device: str = "cpu"
+    mlx_word_timestamps: bool = False
+
+
 class TTSConfig(BaseModel):
     voice: str = "Kore"
     gemini_voice_names: dict[str, str] = Field(default_factory=dict)
     gemini_prompt_preamble: str | None = None
     model_name: str = "gemini-3.1-flash-tts-preview"
-    use_stub: bool = True
     sample_rate: int = 24000
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
@@ -52,7 +63,6 @@ class DiarizationConfig(BaseModel):
 
 class TranslationConfig(BaseModel):
     provider: str = "gemini"
-    use_stub: bool = True
     model_name: str = "gemini-flash-latest"
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
@@ -65,6 +75,7 @@ class AppConfig(BaseModel):
     target_language: str = "kk"
     subtitle_language: str = "zh"
     audio: AudioConfig = Field(default_factory=AudioConfig)
+    transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
     tts_alignment: TTSAlignmentConfig = Field(default_factory=TTSAlignmentConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)

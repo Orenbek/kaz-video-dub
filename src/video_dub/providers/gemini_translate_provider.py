@@ -28,7 +28,6 @@ class GeminiClientLike(Protocol):
 class GeminiTranslateConfig(BaseModel):
     model_name: str = "gemini-flash-latest"
     api_key_env: str = "GEMINI_API_KEY"
-    use_stub: bool = True
     prompt_dir: Path = Path("configs/prompts")
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
@@ -40,25 +39,9 @@ class GeminiTranslateProvider:
         self.config = config or GeminiTranslateConfig()
 
     def translate_to_kazakh(self, segments: list[Segment]) -> list[Segment]:
-        if self.config.use_stub:
-            print(f"[translate] Using stub Kazakh translation for {len(segments)} segments")
-            return [
-                segment.model_copy(update={"text_kk": self._stub_translate(segment.text_en, "kk")})
-                for segment in segments
-            ]
         return self._translate_with_gemini(segments, mode="kk")
 
     def translate_to_chinese_subtitles(self, segments: list[Segment]) -> list[Segment]:
-        if self.config.use_stub:
-            print(
-                f"[translate] Using stub Chinese subtitle translation for {len(segments)} segments"
-            )
-            return [
-                segment.model_copy(
-                    update={"subtitle_zh": self._stub_translate(segment.text_en, "zh")}
-                )
-                for segment in segments
-            ]
         return self._translate_with_gemini(segments, mode="zh")
 
     def _translate_with_gemini(
@@ -172,7 +155,3 @@ class GeminiTranslateProvider:
         except (AttributeError, IndexError, TypeError) as exc:
             raise RuntimeError("Gemini translation response did not contain readable text") from exc
         return "\n".join(collected).strip()
-
-    def _stub_translate(self, text: str, mode: TranslationMode) -> str:
-        prefix = "[kk stub]" if mode == "kk" else "[zh stub]"
-        return f"{prefix} {text.strip()}"

@@ -27,8 +27,8 @@ Set these before real provider runs:
 - `HF_TOKEN` for WhisperX alignment / pyannote gated assets when needed
 
 ## Quick start
-Stub mode is enabled by default for Gemini translation and TTS, so the pipeline structure can run before full API wiring.
-The default real translation model is `gemini-flash-latest`, chosen for Flash pricing and latency while the translation path remains text-only.
+The default translation model is `gemini-flash-latest`, chosen for Flash pricing and latency while the translation path remains text-only.
+Translation and TTS require `GEMINI_API_KEY`.
 
 ```bash
 pixi run run --input path/to/input.mp4
@@ -46,10 +46,7 @@ the final mux still uses the video from `--input`.
 
 ## Real provider run
 1. Edit `configs/default.yaml`
-2. Set:
-   - `translation.use_stub: false`
-   - optionally override `translation.model_name`
-   - `tts.use_stub: false`
+2. Optionally override `translation.model_name` or `tts.model_name`
 3. Make sure `.env` contains `GEMINI_API_KEY`
 4. If WhisperX or pyannote gated models require it, set `HF_TOKEN`
 5. Tune retries if preview APIs are flaky:

@@ -1,4 +1,3 @@
-# Real provider config for translation and TTS. No stub providers are used.
 run_root: runs
 source_language: en
 target_language: kk
@@ -7,16 +6,18 @@ subtitle_language: zh
 video:
   subtitle_mode: hard
 
+transcription:
+  provider: mlx_whisper
+  mlx_model_name: mlx-community/whisper-large-v3-turbo
+
 translation:
   provider: gemini
-  use_stub: false
   model_name: gemini-flash-latest
   max_retries: 3
   retry_delay_seconds: 1.0
   request_timeout_seconds: 60.0
 
 tts:
-  use_stub: false
   model_name: gemini-3.1-flash-tts-preview
   voice: Kore
   gemini_voice_names:
@@ -29,8 +30,10 @@ tts:
   request_timeout_seconds: 120.0
 
 diarization:
+  # Community-1 requires pyannote.audio 4.x, which conflicts with whisperx 3.4.x.
+  # Keep 3.1 in the main pixi environment until diarization runs in a separate pyannote4 env.
   model_name: pyannote/speaker-diarization-3.1
-  device: cpu
+  device: mps
   num_speakers: 2
   min_speakers:
   max_speakers:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import os
 import time
 import wave
@@ -26,7 +25,6 @@ class GeminiTTSConfig(BaseModel):
     prompt_preamble: str = DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE
     language: str = "kk"
     api_key_env: str = "GEMINI_API_KEY"
-    use_stub: bool = True
     sample_rate: int = 24000
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
@@ -42,9 +40,6 @@ class GeminiTTSProvider:
         text = (segment.text_kk or segment.text_en).strip()
         if not text:
             raise RuntimeError(f"Segment {segment.id} has no text for TTS")
-        if self.config.use_stub:
-            self._write_stub_wav(output_path, text)
-            return output_path
         self.validate_voice_name(voice)
         prompt = self.build_tts_prompt(
             text,
@@ -153,20 +148,3 @@ class GeminiTTSProvider:
             wav_file.setsampwidth(2)
             wav_file.setframerate(self.config.sample_rate)
             wav_file.writeframes(pcm_data)
-
-    def _write_stub_wav(self, output_path: Path, text: str) -> None:
-        sample_rate = self.config.sample_rate
-        duration = max(0.4, min(6.0, len(text) * 0.06))
-        frame_count = int(sample_rate * duration)
-        frequency = 440.0
-        amplitude = 10000
-
-        with wave.open(str(output_path), "wb") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(sample_rate)
-            frames = bytearray()
-            for i in range(frame_count):
-                value = int(amplitude * math.sin(2 * math.pi * frequency * (i / sample_rate)))
-                frames += value.to_bytes(2, byteorder="little", signed=True)
-            wav_file.writeframes(bytes(frames))

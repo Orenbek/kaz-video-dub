@@ -18,6 +18,7 @@ from video_dub.providers.gemini_tts import (
     GeminiTTSConfig,
     GeminiTTSProvider,
 )
+from video_dub.providers.mlx_whisper_provider import MLXWhisperConfig, MLXWhisperProvider
 from video_dub.providers.pyannote_provider import PyannoteConfig, PyannoteProvider
 from video_dub.providers.whisperx_provider import WhisperXConfig, WhisperXProvider
 from video_dub.services.audio_compose import AudioComposeService
@@ -151,7 +152,6 @@ def build_translation_service(config: AppConfig) -> TranslationService:
     provider = GeminiTranslateProvider(
         GeminiTranslateConfig(
             model_name=config.translation.model_name,
-            use_stub=config.translation.use_stub,
             max_retries=config.translation.max_retries,
             retry_delay_seconds=config.translation.retry_delay_seconds,
             request_timeout_seconds=config.translation.request_timeout_seconds,
@@ -166,7 +166,6 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
             model_name=config.tts.model_name,
             prompt_preamble=config.tts.gemini_prompt_preamble or DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE,
             language=config.target_language,
-            use_stub=config.tts.use_stub,
             sample_rate=config.tts.sample_rate,
             max_retries=config.tts.max_retries,
             retry_delay_seconds=config.tts.retry_delay_seconds,
@@ -174,6 +173,33 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
         )
     )
     return SynthesisService(provider, config.tts_alignment)
+
+
+def build_transcription_service(config: AppConfig) -> TranscriptionService:
+    language = config.source_language
+    if config.transcription.provider == "mlx_whisper":
+        return TranscriptionService(
+            MLXWhisperProvider(
+                MLXWhisperConfig(
+                    model_name=config.transcription.mlx_model_name,
+                    language=language,
+                    align_device=config.transcription.align_device,
+                    word_timestamps=config.transcription.mlx_word_timestamps,
+                )
+            )
+        )
+    return TranscriptionService(
+        WhisperXProvider(
+            WhisperXConfig(
+                model_name=config.transcription.model_name,
+                language=language,
+                device=config.transcription.device,
+                compute_type=config.transcription.compute_type,
+                batch_size=config.transcription.batch_size,
+                vad_method=config.transcription.vad_method,
+            )
+        )
+    )
 
 
 def should_run_diarization(config: AppConfig) -> bool:
@@ -263,13 +289,11 @@ def run_extract_and_transcribe(context: PipelineContext) -> TranscriptDocument:
     context.manifest.artifacts["source_audio"] = str(context.layout.source_audio_path)
     context.store.write_manifest(context.manifest)
 
-    print("[pipeline] Starting transcription and alignment")
-    provider = WhisperXProvider(
-        WhisperXConfig(
-            language=context.config.source_language,
-        )
+    print(
+        "[pipeline] Starting transcription and alignment: "
+        f"provider={context.config.transcription.provider}"
     )
-    service = TranscriptionService(provider)
+    service = build_transcription_service(context.config)
     transcript = service.run(context.layout.source_audio_path)
     print(f"[pipeline] Transcription finished: segments={len(transcript.segments)}")
     context.store.write_transcript_en(transcript)

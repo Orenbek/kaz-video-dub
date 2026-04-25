@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Protocol
 
 from video_dub.models.transcript import TranscriptDocument
-from video_dub.providers.whisperx_provider import WhisperXProvider
+
+
+class TranscriptionProvider(Protocol):
+    def transcribe_and_align(self, audio_path: Path) -> TranscriptDocument: ...
 
 
 class TranscriptionService:
-    def __init__(self, provider: WhisperXProvider) -> None:
+    def __init__(self, provider: TranscriptionProvider) -> None:
         self.provider = provider
 
     def run(self, audio_path: Path) -> TranscriptDocument:
