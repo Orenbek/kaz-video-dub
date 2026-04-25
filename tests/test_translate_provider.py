@@ -18,8 +18,9 @@ def test_default_translation_timeout_is_converted_to_milliseconds() -> None:
                 self.timeout = timeout
 
     provider = GeminiTranslateProvider(GeminiTranslateConfig())
+    options = provider._build_http_options(FakeTypes)
 
-    assert provider._build_http_options(FakeTypes).timeout == 60_000
+    assert options.timeout == 60_000
 
 
 def test_stub_kazakh_translation_sets_text_kk() -> None:

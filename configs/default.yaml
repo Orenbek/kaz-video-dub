@@ -62,7 +62,8 @@ tts_alignment:
   manual_review_on_failure: true
 
 video:
-  # Subtitle mux mode for final video packaging.
+  # Subtitle mux mode for final video packaging: soft keeps a selectable subtitle track,
+  # hard burns subtitles into the video frames.
   subtitle_mode: soft
 
 diarization:

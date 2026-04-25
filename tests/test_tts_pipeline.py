@@ -21,6 +21,24 @@ def test_video_mux_builds_soft_subtitle_command() -> None:
     assert "-c:s mov_text" in command
 
 
+def test_video_mux_builds_hard_subtitle_command() -> None:
+    service = VideoMuxService()
+    command = service.build_hard_subtitle_command(
+        input_video=Path("input.mp4"),
+        dub_audio=Path("dub_kk.wav"),
+        subtitle_srt=Path("subtitles.zh.srt"),
+        output_video=Path("final.mp4"),
+    )
+
+    assert '"input.mp4"' in command
+    assert '"dub_kk.wav"' in command
+    assert "subtitles=subtitles.zh.srt" in command
+    assert "-c:v libx264" in command
+    assert "-c:a aac" in command
+    assert "-sn" in command
+    assert "-c:s mov_text" not in command
+
+
 def test_transcript_can_store_tts_metadata() -> None:
     transcript = TranscriptDocument(
         source_audio_path=Path("source.wav"),

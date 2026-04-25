@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
@@ -38,7 +39,7 @@ class TTSAlignmentConfig(BaseModel):
 
 
 class VideoConfig(BaseModel):
-    subtitle_mode: str = "soft"
+    subtitle_mode: Literal["soft", "hard"] = "soft"
 
 
 class DiarizationConfig(BaseModel):

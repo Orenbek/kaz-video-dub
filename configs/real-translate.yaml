@@ -4,6 +4,9 @@ source_language: en
 target_language: kk
 subtitle_language: zh
 
+video:
+  subtitle_mode: hard
+
 translation:
   provider: gemini
   use_stub: false

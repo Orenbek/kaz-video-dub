@@ -380,15 +380,29 @@ def run_tts_compose_and_mux(
     context.store.write_manifest(context.manifest)
 
     mux_service = VideoMuxService()
-    print(f"[pipeline] Muxing final video to {context.layout.final_video_path}")
-    mux_service.mux_soft_subtitle(
-        input_video=require_manifest_input_video(context.manifest.input_video),
-        dub_audio=context.layout.dub_audio_path,
-        subtitle_srt=context.layout.subtitles_zh_path,
-        output_video=context.layout.final_video_path,
+    subtitle_mode = context.config.video.subtitle_mode
+    print(
+        f"[pipeline] Muxing final video to {context.layout.final_video_path}: "
+        f"subtitle_mode={subtitle_mode}"
     )
+    input_video = require_manifest_input_video(context.manifest.input_video)
+    if subtitle_mode == "hard":
+        mux_service.mux_hard_subtitle(
+            input_video=input_video,
+            dub_audio=context.layout.dub_audio_path,
+            subtitle_srt=context.layout.subtitles_zh_path,
+            output_video=context.layout.final_video_path,
+        )
+    else:
+        mux_service.mux_soft_subtitle(
+            input_video=input_video,
+            dub_audio=context.layout.dub_audio_path,
+            subtitle_srt=context.layout.subtitles_zh_path,
+            output_video=context.layout.final_video_path,
+        )
     print(f"[pipeline] Wrote final video to {context.layout.final_video_path}")
     context.manifest.steps["mux_video"] = "done"
     context.manifest.artifacts["final_video"] = str(context.layout.final_video_path)
+    context.manifest.artifacts["subtitle_mode"] = subtitle_mode
     context.store.write_manifest(context.manifest)
     return prepared_transcript

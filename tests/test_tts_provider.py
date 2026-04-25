@@ -25,8 +25,9 @@ def test_default_tts_timeout_is_converted_to_milliseconds() -> None:
                 self.timeout = timeout
 
     provider = GeminiTTSProvider(GeminiTTSConfig())
+    options = provider._build_http_options(FakeTypes)
 
-    assert provider._build_http_options(FakeTypes).timeout == 120_000
+    assert options.timeout == 120_000
 
 
 def test_gemini_tts_rejects_unknown_voice_name() -> None:

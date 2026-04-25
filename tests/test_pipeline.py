@@ -526,6 +526,59 @@ def test_run_tts_compose_and_mux_skips_duration_control_when_disabled(
     assert json.loads(context.layout.manual_review_segments_path.read_text(encoding="utf-8")) == []
 
 
+def test_run_tts_compose_and_mux_uses_hard_subtitle_mode(tmp_path: Path, monkeypatch) -> None:
+    input_video = tmp_path / "input.mp4"
+    input_video.write_bytes(b"fake-video")
+    config = AppConfig(run_root=tmp_path / "runs")
+    config.video = config.video.model_copy(update={"subtitle_mode": "hard"})
+    context = initialize_run(config, input_video, job_id="job-hard-subtitle")
+    transcript = TranscriptDocument(
+        source_audio_path=Path("source.wav"),
+        language="kk",
+        segments=[Segment(id="seg_1", start=0.0, end=1.0, text_en="Hello", text_kk="Сәлем")],
+    )
+    calls = {}
+
+    class FakeTTSService:
+        def run(self, transcript_kk, tts_dir, voice, raw_tts_dir=None, voices_by_speaker=None):
+            return transcript_kk
+
+    class FakeComposeService:
+        def __init__(self, alignment):
+            self.alignment = alignment
+
+        def prepare_transcript(self, transcript_with_tts):
+            return transcript_with_tts
+
+        def compose(self, transcript_with_tts, output_path):
+            output_path.write_bytes(b"dub")
+            return output_path
+
+    class FakeMuxService:
+        def mux_hard_subtitle(self, input_video, dub_audio, subtitle_srt, output_video):
+            calls["mode"] = "hard"
+            calls["subtitle_srt"] = subtitle_srt
+            output_video.write_bytes(b"video")
+            return output_video
+
+        def mux_soft_subtitle(self, input_video, dub_audio, subtitle_srt, output_video):
+            raise AssertionError("Expected hard subtitle mux")
+
+    monkeypatch.setattr("video_dub.pipeline.build_tts_service", lambda config: FakeTTSService())
+    monkeypatch.setattr("video_dub.pipeline.AudioComposeService", FakeComposeService)
+    monkeypatch.setattr("video_dub.pipeline.VideoMuxService", FakeMuxService)
+    context.layout.subtitles_zh_path.write_text("stub", encoding="utf-8")
+
+    run_tts_compose_and_mux(context, transcript)
+
+    manifest = json.loads(context.layout.manifest_path.read_text(encoding="utf-8"))
+    assert calls == {
+        "mode": "hard",
+        "subtitle_srt": context.layout.subtitles_zh_path,
+    }
+    assert manifest["artifacts"]["subtitle_mode"] == "hard"
+
+
 def test_repair_export_cli_writes_manual_review_rows(tmp_path: Path) -> None:
     run_dir = tmp_path / "runs" / "job-1"
     run_dir.mkdir(parents=True)

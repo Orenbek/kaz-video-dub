@@ -8,7 +8,10 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel
 
 from video_dub.models.segment import Segment
-from video_dub.providers.gemini_retry import is_retryable_gemini_error
+from video_dub.providers.gemini_retry import (
+    build_gemini_http_options,
+    is_retryable_gemini_error,
+)
 
 TranslationMode = Literal["kk", "zh"]
 
@@ -147,10 +150,7 @@ class GeminiTranslateProvider:
         ) from last_error
 
     def _build_http_options(self, types_module: Any) -> Any:
-        if self.config.request_timeout_seconds is None:
-            return None
-        timeout_ms = max(1, int(self.config.request_timeout_seconds * 1000))
-        return types_module.HttpOptions(timeout=timeout_ms)
+        return build_gemini_http_options(types_module, self.config.request_timeout_seconds)
 
     def _format_timeout(self) -> str:
         if self.config.request_timeout_seconds is None:

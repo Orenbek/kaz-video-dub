@@ -99,17 +99,27 @@ def rebuild_run_outputs(
     compose_service.compose(transcript, layout.dub_audio_path)
 
     mux_service = VideoMuxService()
-    mux_service.mux_soft_subtitle(
-        input_video=require_manifest_input_video(manifest.input_video),
-        dub_audio=layout.dub_audio_path,
-        subtitle_srt=layout.subtitles_zh_path,
-        output_video=layout.final_video_path,
-    )
+    input_video = require_manifest_input_video(manifest.input_video)
+    if config.video.subtitle_mode == "hard":
+        mux_service.mux_hard_subtitle(
+            input_video=input_video,
+            dub_audio=layout.dub_audio_path,
+            subtitle_srt=layout.subtitles_zh_path,
+            output_video=layout.final_video_path,
+        )
+    else:
+        mux_service.mux_soft_subtitle(
+            input_video=input_video,
+            dub_audio=layout.dub_audio_path,
+            subtitle_srt=layout.subtitles_zh_path,
+            output_video=layout.final_video_path,
+        )
 
     duration_summary = summarize_duration_statuses(transcript)
     manifest.duration_summary = DurationSummary.model_validate(duration_summary)
     manifest.artifacts["dub_audio"] = str(layout.dub_audio_path)
     manifest.artifacts["final_video"] = str(layout.final_video_path)
+    manifest.artifacts["subtitle_mode"] = config.video.subtitle_mode
 
     manual_review_rows = [
         build_manual_review_segment_row(segment)

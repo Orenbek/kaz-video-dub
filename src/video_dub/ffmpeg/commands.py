@@ -11,6 +11,17 @@ def quote(path: Path | str) -> str:
     return f'"{path}"'
 
 
+def escape_filter_value(value: Path | str) -> str:
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace(":", "\\:")
+        .replace(",", "\\,")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+    )
+
+
 def extract_audio_command(
     input_video: Path,
     output_audio: Path,
@@ -69,5 +80,26 @@ def mux_soft_subtitle_command(
         f"-i {quote(subtitle_srt)} "
         "-map 0:v:0 -map 1:a:0 -map 2:0 "
         "-c:v copy -c:a aac -c:s mov_text "
+        f"{quote(output_video)}"
+    )
+
+
+def mux_hard_subtitle_command(
+    input_video: Path,
+    dub_audio: Path,
+    subtitle_srt: Path,
+    output_video: Path,
+) -> str:
+    subtitle_filter = (
+        f"subtitles={escape_filter_value(subtitle_srt)}:"
+        "force_style='FontSize=18,Outline=1,Shadow=0,MarginV=42'"
+    )
+    return (
+        "ffmpeg -y "
+        f"-i {quote(input_video)} "
+        f"-i {quote(dub_audio)} "
+        "-map 0:v:0 -map 1:a:0 "
+        f"-vf {quote(subtitle_filter)} "
+        "-c:v libx264 -preset medium -crf 18 -c:a aac -sn "
         f"{quote(output_video)}"
     )
