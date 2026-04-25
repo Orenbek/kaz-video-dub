@@ -10,22 +10,24 @@ translation:
   model_name: gemini-flash-latest
   max_retries: 3
   retry_delay_seconds: 1.0
+  request_timeout_seconds: 60.0
 
 tts:
   use_stub: false
   model_name: gemini-3.1-flash-tts-preview
   voice: Kore
   gemini_voice_names:
-    SPEAKER_00: Kore
-    SPEAKER_01: Charon
+    SPEAKER_00: Alnilam
+    SPEAKER_01: Sadaltager
   gemini_prompt_preamble:
   sample_rate: 24000
   max_retries: 3
   retry_delay_seconds: 1.0
+  request_timeout_seconds: 120.0
 
 diarization:
   model_name: pyannote/speaker-diarization-3.1
   device: cpu
-  num_speakers:
+  num_speakers: 2
   min_speakers:
   max_speakers:

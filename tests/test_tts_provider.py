@@ -18,6 +18,17 @@ def test_gemini_tts_voice_names_include_documented_options() -> None:
     assert "Sadaltager" in GEMINI_TTS_VOICE_NAMES
 
 
+def test_default_tts_timeout_is_converted_to_milliseconds() -> None:
+    class FakeTypes:
+        class HttpOptions:
+            def __init__(self, timeout: int) -> None:
+                self.timeout = timeout
+
+    provider = GeminiTTSProvider(GeminiTTSConfig())
+
+    assert provider._build_http_options(FakeTypes).timeout == 120_000
+
+
 def test_gemini_tts_rejects_unknown_voice_name() -> None:
     provider = GeminiTTSProvider(GeminiTTSConfig())
 

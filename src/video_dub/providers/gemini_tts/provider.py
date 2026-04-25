@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from video_dub.models.segment import Segment
+from video_dub.providers.gemini_retry import is_retryable_gemini_error
 from video_dub.providers.gemini_tts.prompts import (
     DEFAULT_GEMINI_TTS_PROMPT_PREAMBLE,
     build_tts_prompt,
@@ -26,6 +27,7 @@ class GeminiTTSConfig(BaseModel):
     sample_rate: int = 24000
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
+    request_timeout_seconds: float | None = 120.0
 
 
 class GeminiTTSProvider:
@@ -77,9 +79,14 @@ class GeminiTTSProvider:
         except ImportError as exc:
             raise RuntimeError("google-genai is not installed") from exc
 
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(
+            api_key=api_key,
+            http_options=self._build_http_options(types),
+        )
         last_error: Exception | None = None
+        attempt_count = 0
         for attempt in range(1, self.config.max_retries + 1):
+            attempt_count = attempt
             try:
                 response = client.models.generate_content(
                     model=self.config.model_name,
@@ -100,7 +107,7 @@ class GeminiTTSProvider:
                 return output_path
             except Exception as exc:
                 last_error = exc
-                if attempt == self.config.max_retries:
+                if attempt == self.config.max_retries or not is_retryable_gemini_error(exc):
                     break
                 print(
                     f"[tts] Gemini retry {attempt + 1}/{self.config.max_retries} "
@@ -109,8 +116,14 @@ class GeminiTTSProvider:
                 time.sleep(self.config.retry_delay_seconds)
         raise RuntimeError(
             "Gemini TTS failed for "
-            f"segment {segment_id} after {self.config.max_retries} attempts: {last_error}"
+            f"segment {segment_id} after {attempt_count} attempt(s): {last_error}"
         ) from last_error
+
+    def _build_http_options(self, types_module: Any) -> Any:
+        if self.config.request_timeout_seconds is None:
+            return None
+        timeout_ms = max(1, int(self.config.request_timeout_seconds * 1000))
+        return types_module.HttpOptions(timeout=timeout_ms)
 
     def _extract_pcm_bytes(self, response: Any) -> bytes:
         try:

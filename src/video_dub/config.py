@@ -20,6 +20,7 @@ class TTSConfig(BaseModel):
     sample_rate: int = 24000
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
+    request_timeout_seconds: float | None = 120.0
 
 
 class TTSAlignmentConfig(BaseModel):
@@ -54,6 +55,7 @@ class TranslationConfig(BaseModel):
     model_name: str = "gemini-flash-latest"
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
+    request_timeout_seconds: float | None = 60.0
 
 
 class AppConfig(BaseModel):

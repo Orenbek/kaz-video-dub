@@ -154,6 +154,7 @@ def build_translation_service(config: AppConfig) -> TranslationService:
             use_stub=config.translation.use_stub,
             max_retries=config.translation.max_retries,
             retry_delay_seconds=config.translation.retry_delay_seconds,
+            request_timeout_seconds=config.translation.request_timeout_seconds,
         )
     )
     return TranslationService(provider)
@@ -169,6 +170,7 @@ def build_tts_service(config: AppConfig) -> SynthesisService:
             sample_rate=config.tts.sample_rate,
             max_retries=config.tts.max_retries,
             retry_delay_seconds=config.tts.retry_delay_seconds,
+            request_timeout_seconds=config.tts.request_timeout_seconds,
         )
     )
     return SynthesisService(provider, config.tts_alignment)

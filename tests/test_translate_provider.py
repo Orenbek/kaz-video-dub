@@ -11,6 +11,17 @@ def test_default_translation_model_uses_gemini_flash_latest() -> None:
     assert GeminiTranslateConfig().model_name == "gemini-flash-latest"
 
 
+def test_default_translation_timeout_is_converted_to_milliseconds() -> None:
+    class FakeTypes:
+        class HttpOptions:
+            def __init__(self, timeout: int) -> None:
+                self.timeout = timeout
+
+    provider = GeminiTranslateProvider(GeminiTranslateConfig())
+
+    assert provider._build_http_options(FakeTypes).timeout == 60_000
+
+
 def test_stub_kazakh_translation_sets_text_kk() -> None:
     provider = GeminiTranslateProvider(GeminiTranslateConfig(use_stub=True))
     segments = [Segment(id="seg_0001", start=0.0, end=1.0, text_en="Hello there")]

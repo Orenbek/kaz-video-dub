@@ -29,38 +29,42 @@ https://aistudio.google.com/generate-speech
 
 ## Available voices
 
-| Voice name | Style |
-| --- | --- |
-| Zephyr | Bright / 明亮 |
-| Puck | Upbeat / 欢快 |
-| Charon | Informative / 信息丰富 |
-| Kore | Firm / 坚定 |
-| Fenrir | Excitable / 兴奋 |
-| Leda | Youthful / 青春 |
-| Orus | Firm / 坚定 |
-| Aoede | Breezy / 轻快 |
-| Callirrhoe | Easy-going / 随和 |
-| Autonoe | Bright / 明亮 |
-| Enceladus | Breathy / 气声 |
-| Iapetus | Clear / 清晰 |
-| Umbriel | Easy-going / 轻松自在 |
-| Algieba | Smooth / 平滑 |
-| Despina | Smooth / 平滑 |
-| Erinome | Clear / 清晰 |
-| Algenib | Gravelly / 沙哑 |
-| Rasalgethi | Informative / 信息丰富 |
-| Laomedeia | Upbeat / 欢快 |
-| Achernar | Soft / 柔和 |
-| Alnilam | Firm / 坚定 |
-| Schedar | Even / 平稳 |
-| Gacrux | Mature / 成熟 |
-| Pulcherrima | Forward / 直率 |
-| Achird | Friendly / 友好 |
-| Zubenelgenubi | Casual / 随意 |
-| Vindemiatrix | Gentle / 温柔 |
-| Sadachbia | Lively / 活泼 |
-| Sadaltager | Knowledgeable / 知识渊博 |
-| Sulafat | Warm / 温暖 |
+The Gemini API lists voice names and styles, but does not expose a gender
+field in the API. The `Sex` column below is a practical perceived-voice label
+for voice selection; confirm final choices by listening in AI Studio.
+
+| Voice name | Sex | Style |
+| --- | --- | --- |
+| Zephyr | Female / 女 | Bright / 明亮 |
+| Puck | Male / 男 | Upbeat / 欢快 |
+| Charon | Male / 男 | Informative / 信息丰富 |
+| Kore | Female / 女 | Firm / 坚定 |
+| Fenrir | Male / 男 | Excitable / 兴奋 |
+| Leda | Female / 女 | Youthful / 青春 |
+| Orus | Male / 男 | Firm / 坚定 |
+| Aoede | Female / 女 | Breezy / 轻快 |
+| Callirrhoe | Female / 女 | Easy-going / 随和 |
+| Autonoe | Female / 女 | Bright / 明亮 |
+| Enceladus | Male / 男 | Breathy / 气声 |
+| Iapetus | Male / 男 | Clear / 清晰 |
+| Umbriel | Male / 男 | Easy-going / 轻松自在 |
+| Algieba | Male / 男 | Smooth / 平滑 |
+| Despina | Female / 女 | Smooth / 平滑 |
+| Erinome | Female / 女 | Clear / 清晰 |
+| Algenib | Male / 男 | Gravelly / 沙哑 |
+| Rasalgethi | Male / 男 | Informative / 信息丰富 |
+| Laomedeia | Female / 女 | Upbeat / 欢快 |
+| Achernar | Female / 女 | Soft / 柔和 |
+| Alnilam | Male / 男 | Firm / 坚定 |
+| Schedar | Male / 男 | Even / 平稳 |
+| Gacrux | Female / 女 | Mature / 成熟 |
+| Pulcherrima | Male / 男 | Forward / 直率 |
+| Achird | Male / 男 | Friendly / 友好 |
+| Zubenelgenubi | Male / 男 | Casual / 随意 |
+| Vindemiatrix | Female / 女 | Gentle / 温柔 |
+| Sadachbia | Male / 男 | Lively / 活泼 |
+| Sadaltager | Male / 男 | Knowledgeable / 知识渊博 |
+| Sulafat | Female / 女 | Warm / 温暖 |
 
 ## Selection notes
 

@@ -8,6 +8,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel
 
 from video_dub.models.segment import Segment
+from video_dub.providers.gemini_retry import is_retryable_gemini_error
 
 TranslationMode = Literal["kk", "zh"]
 
@@ -28,6 +29,7 @@ class GeminiTranslateConfig(BaseModel):
     prompt_dir: Path = Path("configs/prompts")
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
+    request_timeout_seconds: float | None = 60.0
 
 
 class GeminiTranslateProvider:
@@ -65,6 +67,7 @@ class GeminiTranslateProvider:
 
         try:
             from google import genai
+            from google.genai import types
         except ImportError as exc:
             raise RuntimeError("google-genai is not installed") from exc
 
@@ -72,11 +75,15 @@ class GeminiTranslateProvider:
             "translate_en_to_kk.txt" if mode == "kk" else "translate_en_to_zh_subtitle.txt"
         )
         system_prompt = (self.config.prompt_dir / prompt_name).read_text(encoding="utf-8")
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(
+            api_key=api_key,
+            http_options=self._build_http_options(types),
+        )
 
         print(
             f"[translate] Starting Gemini {mode} translation: "
-            f"model={self.config.model_name} segments={len(segments)}"
+            f"model={self.config.model_name} segments={len(segments)} "
+            f"timeout={self._format_timeout()}"
         )
         translated_segments: list[Segment] = []
         for index, segment in enumerate(segments, start=1):
@@ -112,7 +119,9 @@ class GeminiTranslateProvider:
         mode: TranslationMode,
     ) -> str:
         last_error: Exception | None = None
+        attempt_count = 0
         for attempt in range(1, self.config.max_retries + 1):
+            attempt_count = attempt
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -124,7 +133,7 @@ class GeminiTranslateProvider:
                 raise RuntimeError("Gemini returned empty translation text")
             except Exception as exc:
                 last_error = exc
-                if attempt == self.config.max_retries:
+                if attempt == self.config.max_retries or not is_retryable_gemini_error(exc):
                     break
                 print(
                     f"[translate] Gemini {mode} retry {attempt + 1}/{self.config.max_retries} "
@@ -134,8 +143,19 @@ class GeminiTranslateProvider:
         raise RuntimeError(
             "Gemini translation failed for "
             f"segment {segment_id} ({mode}) after "
-            f"{self.config.max_retries} attempts: {last_error}"
+            f"{attempt_count} attempt(s): {last_error}"
         ) from last_error
+
+    def _build_http_options(self, types_module: Any) -> Any:
+        if self.config.request_timeout_seconds is None:
+            return None
+        timeout_ms = max(1, int(self.config.request_timeout_seconds * 1000))
+        return types_module.HttpOptions(timeout=timeout_ms)
+
+    def _format_timeout(self) -> str:
+        if self.config.request_timeout_seconds is None:
+            return "none"
+        return f"{self.config.request_timeout_seconds:g}s"
 
     def _extract_text_response(self, response: Any) -> str:
         text = getattr(response, "text", None)

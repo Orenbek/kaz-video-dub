@@ -32,6 +32,8 @@ tts:
   max_retries: 3
   # Delay between TTS retry attempts in seconds.
   retry_delay_seconds: 1.0
+  # Per-request timeout for Gemini TTS API calls in seconds. Set null to use SDK defaults.
+  request_timeout_seconds: 120.0
 
 tts_alignment:
   # Master switch for segment-level duration measurement and alignment metadata.
@@ -87,3 +89,5 @@ translation:
   max_retries: 3
   # Delay between translation retry attempts in seconds.
   retry_delay_seconds: 1.0
+  # Per-request timeout for Gemini translation API calls in seconds. Set null to use SDK defaults.
+  request_timeout_seconds: 60.0
